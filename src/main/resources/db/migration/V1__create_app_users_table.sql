@@ -5,9 +5,9 @@ CREATE SEQUENCE IF NOT EXISTS seq_user
 
 CREATE TABLE IF NOT EXISTS users
 (
-    id             BIGINT       NOT NULL DEFAULT nextval('seq_user')
+    id              BIGINT       NOT NULL DEFAULT nextval('seq_user')
     ,email          VARCHAR(255) NOT NULL UNIQUE
-    ,password  VARCHAR(255) NOT NULL
+    ,password       VARCHAR(255) NOT NULL
     ,full_name      VARCHAR(255) NOT NULL
     ,role           VARCHAR(50)  NOT NULL
     ,status         VARCHAR(50)  NOT NULL
