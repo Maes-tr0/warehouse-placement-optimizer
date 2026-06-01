@@ -1,9 +1,9 @@
 package com.nikitaopara.warehouseoptimizer.bootstrap;
 
-import com.nikitaopara.warehouseoptimizer.user.Role;
-import com.nikitaopara.warehouseoptimizer.user.Status;
-import com.nikitaopara.warehouseoptimizer.user.User;
-import com.nikitaopara.warehouseoptimizer.user.UserRepository;
+import com.nikitaopara.warehouseoptimizer.account.model.Role;
+import com.nikitaopara.warehouseoptimizer.account.model.Status;
+import com.nikitaopara.warehouseoptimizer.account.model.User;
+import com.nikitaopara.warehouseoptimizer.account.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class AdminInitializer implements CommandLineRunner {
+public class RootAdminInitializer implements CommandLineRunner {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -30,18 +30,18 @@ public class AdminInitializer implements CommandLineRunner {
     @Override
     @NullMarked
     public void run(String... args) {
-        if (userRepository.existsByRole(Role.ADMIN)) {
+        if (userRepository.existsByRole(Role.ROOT_ADMIN)) {
             return;
         }
 
-        User admin = User.builder()
+        User rootAdmin = User.builder()
                 .email(adminEmail)
                 .passwordHash(passwordEncoder.encode(adminPassword))
                 .fullName(adminFullName)
-                .role(Role.ADMIN)
+                .role(Role.ROOT_ADMIN)
                 .status(Status.ACTIVE)
                 .build();
 
-        userRepository.save(admin);
+        userRepository.save(rootAdmin);
     }
 }

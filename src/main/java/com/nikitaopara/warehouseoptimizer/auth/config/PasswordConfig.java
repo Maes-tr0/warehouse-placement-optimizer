@@ -1,4 +1,4 @@
-package com.nikitaopara.warehouseoptimizer.security;
+package com.nikitaopara.warehouseoptimizer.auth.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

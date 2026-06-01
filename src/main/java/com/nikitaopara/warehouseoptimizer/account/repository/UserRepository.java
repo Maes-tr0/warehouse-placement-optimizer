@@ -1,5 +1,7 @@
-package com.nikitaopara.warehouseoptimizer.user;
+package com.nikitaopara.warehouseoptimizer.account.repository;
 
+import com.nikitaopara.warehouseoptimizer.account.model.Role;
+import com.nikitaopara.warehouseoptimizer.account.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

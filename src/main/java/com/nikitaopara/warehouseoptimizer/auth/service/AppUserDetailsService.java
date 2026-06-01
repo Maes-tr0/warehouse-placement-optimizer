@@ -1,8 +1,8 @@
-package com.nikitaopara.warehouseoptimizer.security;
+package com.nikitaopara.warehouseoptimizer.auth.service;
 
-import com.nikitaopara.warehouseoptimizer.user.Status;
-import com.nikitaopara.warehouseoptimizer.user.User;
-import com.nikitaopara.warehouseoptimizer.user.UserRepository;
+import com.nikitaopara.warehouseoptimizer.account.model.Status;
+import com.nikitaopara.warehouseoptimizer.account.model.User;
+import com.nikitaopara.warehouseoptimizer.account.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.security.authentication.DisabledException;
