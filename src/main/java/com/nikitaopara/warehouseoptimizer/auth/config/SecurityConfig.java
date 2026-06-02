@@ -17,23 +17,16 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
-                .csrf(AbstractHttpConfigurer::disable)
-
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
-
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/admin/accounts/*/password")
-                        .hasRole("ROOT_ADMIN")
-
                         .requestMatchers("/admin/**")
                         .hasAnyRole("ROOT_ADMIN", "ADMIN")
 
                         .anyRequest()
                         .authenticated()
                 )
-
                 .httpBasic(Customizer.withDefaults())
                 .build();
     }
