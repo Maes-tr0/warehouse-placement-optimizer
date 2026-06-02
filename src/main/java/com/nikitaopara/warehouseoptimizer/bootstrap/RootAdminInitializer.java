@@ -5,7 +5,6 @@ import com.nikitaopara.warehouseoptimizer.account.model.Status;
 import com.nikitaopara.warehouseoptimizer.account.model.User;
 import com.nikitaopara.warehouseoptimizer.account.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,20 +27,28 @@ public class RootAdminInitializer implements CommandLineRunner {
     private String adminFullName;
 
     @Override
-    @NullMarked
     public void run(String... args) {
         if (userRepository.existsByRole(Role.ROOT_ADMIN)) {
             return;
         }
 
-        User rootAdmin = User.builder()
-                .email(adminEmail)
-                .passwordHash(passwordEncoder.encode(adminPassword))
-                .fullName(adminFullName)
-                .role(Role.ROOT_ADMIN)
-                .status(Status.ACTIVE)
-                .build();
+        userRepository.findUserByEmail(adminEmail).ifPresentOrElse(existingUser -> {
+            existingUser.setRole(Role.ROOT_ADMIN);
+            existingUser.setStatus(Status.ACTIVE);
+            existingUser.setPasswordHash(passwordEncoder.encode(adminPassword));
+            existingUser.setFullName(adminFullName);
 
-        userRepository.save(rootAdmin);
+            userRepository.save(existingUser);
+        }, () -> {
+            User rootAdmin = User.builder()
+                    .email(adminEmail)
+                    .passwordHash(passwordEncoder.encode(adminPassword))
+                    .fullName(adminFullName)
+                    .role(Role.ROOT_ADMIN)
+                    .status(Status.ACTIVE)
+                    .build();
+
+            userRepository.save(rootAdmin);
+        });
     }
 }
