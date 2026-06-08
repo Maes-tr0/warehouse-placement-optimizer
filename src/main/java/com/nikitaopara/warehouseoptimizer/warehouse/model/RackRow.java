@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 @Entity
@@ -15,8 +17,8 @@ import java.util.Objects;
                         columnNames = {"warehouse_id", "code"}
                 ),
                 @UniqueConstraint(
-                        name = "uk_rack_rows_aisle_side",
-                        columnNames = {"aisle_id", "side"}
+                        name = "uk_rack_rows_warehouse_sequence",
+                        columnNames = {"warehouse_id", "sequence_number"}
                 )
         }
 )
@@ -44,6 +46,14 @@ public class RackRow {
     @JoinColumn(name = "aisle_id", nullable = false)
     private Aisle aisle;
 
+    @OneToMany(
+            mappedBy = "rackRow",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    @Builder.Default
+    private List<RackBay> rackBays = new ArrayList<>();
+
     @Column(nullable = false, updatable = false, length = 50)
     private String code;
 
@@ -60,9 +70,46 @@ public class RackRow {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    public void addRackBay(RackBay rackBay) {
+        if (rackBay == null) {
+            return;
+        }
+
+        this.rackBays.add(rackBay);
+        rackBay.setRackRow(this);
+        rackBay.setWarehouse(this.warehouse);
+    }
+
+    public void removeRackBay(RackBay rackBay) {
+        if (rackBay == null) {
+            return;
+        }
+
+        this.rackBays.remove(rackBay);
+        rackBay.setRackRow(null);
+        rackBay.setWarehouse(null);
+    }
+
+    public void setWarehouse(Warehouse warehouse) {
+        this.warehouse = warehouse;
+
+        if (rackBays != null) {
+            rackBays.forEach(rackBay -> rackBay.setWarehouse(warehouse));
+        }
+    }
+
+    public void setAisle(Aisle aisle) {
+        this.aisle = aisle;
+
+        if (aisle != null) {
+            setWarehouse(aisle.getWarehouse());
+        }
+    }
+
     @PrePersist
     protected void onCreate() {
         LocalDateTime now = LocalDateTime.now();
+
         this.createdAt = now;
         this.updatedAt = now;
     }
@@ -106,6 +153,7 @@ public class RackRow {
                 ", code='" + code + '\'' +
                 ", sequenceNumber=" + sequenceNumber +
                 ", version=" + version +
+                ", rackBayCount=" + (rackBays != null ? rackBays.size() : 0) +
                 '}';
     }
 }

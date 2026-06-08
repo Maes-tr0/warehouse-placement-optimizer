@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 @Entity
@@ -44,6 +46,14 @@ public class RackLevel {
     @JoinColumn(name = "rack_bay_id", nullable = false)
     private RackBay rackBay;
 
+    @OneToMany(
+            mappedBy = "rackLevel",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    @Builder.Default
+    private List<StoragePlace> storagePlaces = new ArrayList<>();
+
     @Column(nullable = false, updatable = false, length = 50)
     private String code;
 
@@ -68,6 +78,62 @@ public class RackLevel {
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    public void addStoragePlace(StoragePlace storagePlace) {
+        if (storagePlace == null) {
+            return;
+        }
+
+        this.storagePlaces.add(storagePlace);
+
+        storagePlace.setRackLevel(this);
+        storagePlace.setRackBay(this.rackBay);
+        storagePlace.setWarehouse(this.warehouse);
+
+        if (this.rackBay != null) {
+            storagePlace.setRackRow(this.rackBay.getRackRow());
+        }
+    }
+
+    public void removeStoragePlace(StoragePlace storagePlace) {
+        if (storagePlace == null) {
+            return;
+        }
+
+        this.storagePlaces.remove(storagePlace);
+
+        storagePlace.setRackLevel(null);
+        storagePlace.setRackBay(null);
+        storagePlace.setRackRow(null);
+        storagePlace.setWarehouse(null);
+    }
+
+    public void setWarehouse(Warehouse warehouse) {
+        this.warehouse = warehouse;
+
+        if (storagePlaces != null) {
+            storagePlaces.forEach(storagePlace -> storagePlace.setWarehouse(warehouse));
+        }
+    }
+
+    public void setRackBay(RackBay rackBay) {
+        this.rackBay = rackBay;
+
+        if (rackBay != null) {
+            this.warehouse = rackBay.getWarehouse();
+        }
+
+        if (storagePlaces != null) {
+            storagePlaces.forEach(storagePlace -> {
+                storagePlace.setRackBay(rackBay);
+
+                if (rackBay != null) {
+                    storagePlace.setWarehouse(rackBay.getWarehouse());
+                    storagePlace.setRackRow(rackBay.getRackRow());
+                }
+            });
+        }
+    }
 
     @PrePersist
     protected void onCreate() {
@@ -119,6 +185,7 @@ public class RackLevel {
                 ", heightFromFloorMm=" + heightFromFloorMm +
                 ", maxLevelLoadKg=" + maxLevelLoadKg +
                 ", version=" + version +
+                ", storagePlaceCount=" + (storagePlaces != null ? storagePlaces.size() : 0) +
                 '}';
     }
 }

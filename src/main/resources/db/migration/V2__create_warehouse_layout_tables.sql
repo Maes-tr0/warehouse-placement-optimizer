@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS warehouses
     id                  BIGINT       NOT NULL DEFAULT nextval('seq_warehouse'),
     code                VARCHAR(100) NOT NULL,
     name                VARCHAR(255) NOT NULL,
-    type                VARCHAR(50)  NOT NULL,
+    layout_type         VARCHAR(80)  NOT NULL,
     status              VARCHAR(50)  NOT NULL,
     created_by_user_id  BIGINT       NOT NULL,
     version             BIGINT       NOT NULL DEFAULT 0,
@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS warehouses
 
     CONSTRAINT pk_warehouses PRIMARY KEY (id),
 
-    CONSTRAINT uk_warehouses_code UNIQUE (code),
+    CONSTRAINT uk_warehouses_code
+    UNIQUE (code),
 
     CONSTRAINT fk_warehouses_created_by_user
     FOREIGN KEY (created_by_user_id)
@@ -38,6 +39,8 @@ CREATE TABLE IF NOT EXISTS aisles
     sequence_number         INTEGER     NOT NULL,
     width_mm                INTEGER     NOT NULL,
     length_mm               INTEGER     NOT NULL,
+    entry_x_mm              INTEGER     NOT NULL,
+    entry_y_mm              INTEGER     NOT NULL,
     distance_from_entry_mm  INTEGER     NOT NULL,
     version                 BIGINT      NOT NULL DEFAULT 0,
     created_at              TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -96,8 +99,8 @@ CREATE TABLE IF NOT EXISTS rack_rows
     CONSTRAINT uk_rack_rows_warehouse_code
     UNIQUE (warehouse_id, code),
 
-    CONSTRAINT uk_rack_rows_aisle_sequence
-    UNIQUE (aisle_id, sequence_number),
+    CONSTRAINT uk_rack_rows_warehouse_sequence
+    UNIQUE (warehouse_id, sequence_number),
 
     CONSTRAINT chk_rack_rows_sequence_positive
     CHECK (sequence_number > 0)
@@ -120,6 +123,8 @@ CREATE TABLE IF NOT EXISTS rack_bays
     positions_per_level            INTEGER     NOT NULL,
     beam_length_mm                 INTEGER     NOT NULL,
     max_bay_load_kg                INTEGER     NOT NULL,
+    access_x_mm                    INTEGER     NOT NULL,
+    access_y_mm                    INTEGER     NOT NULL,
     distance_from_aisle_start_mm   INTEGER     NOT NULL,
     version                        BIGINT      NOT NULL DEFAULT 0,
     created_at                     TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -225,6 +230,8 @@ CREATE TABLE IF NOT EXISTS storage_places
     position_number                 INTEGER     NOT NULL,
     max_weight_kg                   INTEGER     NOT NULL,
     max_height_mm                   INTEGER     NOT NULL,
+    access_x_mm                     INTEGER     NOT NULL,
+    access_y_mm                     INTEGER     NOT NULL,
     distance_from_aisle_start_mm    INTEGER     NOT NULL,
     distance_from_entry_mm          INTEGER     NOT NULL,
     status                          VARCHAR(50) NOT NULL,

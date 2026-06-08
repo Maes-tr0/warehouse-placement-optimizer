@@ -1,13 +1,11 @@
 package com.nikitaopara.warehouseoptimizer.warehouse.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 @Entity
@@ -44,6 +42,14 @@ public class Aisle {
     @JoinColumn(name = "warehouse_id", nullable = false)
     private Warehouse warehouse;
 
+    @OneToMany(
+            mappedBy = "aisle",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    @Builder.Default
+    private List<RackRow> rackRows = new ArrayList<>();
+
     @Column(nullable = false, length = 50)
     private String code;
 
@@ -55,6 +61,12 @@ public class Aisle {
 
     @Column(name = "length_mm", nullable = false)
     private Integer lengthMm;
+
+    @Column(name = "entry_x_mm", nullable = false)
+    private Integer entryXMm;
+
+    @Column(name = "entry_y_mm", nullable = false)
+    private Integer entryYMm;
 
     @Column(name = "distance_from_entry_mm", nullable = false)
     private Integer distanceFromEntryMm;
@@ -68,6 +80,34 @@ public class Aisle {
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    public void addRackRow(RackRow rackRow) {
+        if (rackRow == null) {
+            return;
+        }
+
+        this.rackRows.add(rackRow);
+        rackRow.setAisle(this);
+        rackRow.setWarehouse(this.warehouse);
+    }
+
+    public void removeRackRow(RackRow rackRow) {
+        if (rackRow == null) {
+            return;
+        }
+
+        this.rackRows.remove(rackRow);
+        rackRow.setAisle(null);
+        rackRow.setWarehouse(null);
+    }
+
+    public void setWarehouse(Warehouse warehouse) {
+        this.warehouse = warehouse;
+
+        if (rackRows != null) {
+            rackRows.forEach(rackRow -> rackRow.setWarehouse(warehouse));
+        }
+    }
 
     @PrePersist
     protected void onCreate() {
@@ -108,8 +148,11 @@ public class Aisle {
                 ", sequenceNumber=" + sequenceNumber +
                 ", widthMm=" + widthMm +
                 ", lengthMm=" + lengthMm +
+                ", entryXMm=" + entryXMm +
+                ", entryYMm=" + entryYMm +
                 ", distanceFromEntryMm=" + distanceFromEntryMm +
                 ", version=" + version +
+                ", rackRowCount=" + (rackRows != null ? rackRows.size() : 0) +
                 '}';
     }
 

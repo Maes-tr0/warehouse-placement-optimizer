@@ -5,8 +5,8 @@ import com.nikitaopara.warehouseoptimizer.account.dto.UpdateUserRequest;
 import com.nikitaopara.warehouseoptimizer.account.dto.UserResponse;
 import com.nikitaopara.warehouseoptimizer.account.model.Status;
 import com.nikitaopara.warehouseoptimizer.account.model.User;
+import com.nikitaopara.warehouseoptimizer.auth.service.AuthenticatedUserService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,10 +20,11 @@ public class AccountService {
     private final AccountDataService accountDataService;
     private final AccountValidationService accountValidationService;
     private final PasswordEncoder passwordEncoder;
+    private final AuthenticatedUserService authenticatedUserService;
 
     @Transactional
-    public UserResponse createAccount(CreateUserRequest request, Authentication authentication) {
-        User actor = getAuthenticatedUser(authentication);
+    public UserResponse createAccount(CreateUserRequest request) {
+        User actor = authenticatedUserService.getCurrentUser();
 
         accountValidationService.validateCreateRequest(actor, request);
 
@@ -41,8 +42,8 @@ public class AccountService {
     }
 
     @Transactional(readOnly = true)
-    public List<UserResponse> getAccounts(Authentication authentication) {
-        User actor = getAuthenticatedUser(authentication);
+    public List<UserResponse> getAccounts() {
+        User actor = authenticatedUserService.getCurrentUser();
 
         accountValidationService.validateGetAccountsRequest(actor);
 
@@ -53,8 +54,8 @@ public class AccountService {
     }
 
     @Transactional(readOnly = true)
-    public UserResponse getAccountById(Long userId, Authentication authentication) {
-        User actor = getAuthenticatedUser(authentication);
+    public UserResponse getAccountById(Long userId) {
+        User actor = authenticatedUserService.getCurrentUser();
         User targetUser = accountDataService.getUserByIdOrThrow(userId);
 
         accountValidationService.validateGetAccountRequest(actor, targetUser);
@@ -63,8 +64,8 @@ public class AccountService {
     }
 
     @Transactional
-    public UserResponse updateAccount(Long userId, UpdateUserRequest request, Authentication authentication) {
-        User actor = getAuthenticatedUser(authentication);
+    public UserResponse updateAccount(Long userId, UpdateUserRequest request) {
+        User actor = authenticatedUserService.getCurrentUser();
         User targetUser = accountDataService.getUserByIdOrThrow(userId);
 
         accountValidationService.validateUpdateAccountRequest(actor, targetUser, request);
@@ -77,8 +78,8 @@ public class AccountService {
     }
 
     @Transactional
-    public UserResponse activateAccount(Long userId, Authentication authentication) {
-        User actor = getAuthenticatedUser(authentication);
+    public UserResponse activateAccount(Long userId) {
+        User actor = authenticatedUserService.getCurrentUser();
         User targetUser = accountDataService.getUserByIdOrThrow(userId);
 
         accountValidationService.validateActivateRequest(actor, targetUser);
@@ -91,8 +92,8 @@ public class AccountService {
     }
 
     @Transactional
-    public UserResponse deactivateAccount(Long userId, Authentication authentication) {
-        User actor = getAuthenticatedUser(authentication);
+    public UserResponse deactivateAccount(Long userId) {
+        User actor = authenticatedUserService.getCurrentUser();
         User targetUser = accountDataService.getUserByIdOrThrow(userId);
 
         accountValidationService.validateDeactivateRequest(actor, targetUser);
@@ -102,10 +103,6 @@ public class AccountService {
         User updatedUser = accountDataService.save(targetUser);
 
         return UserResponse.from(updatedUser);
-    }
-
-    private User getAuthenticatedUser(Authentication authentication) {
-        return accountDataService.getUserByEmailOrThrow(authentication.getName());
     }
 
     private void applyUpdateRequest(User targetUser, UpdateUserRequest request) {

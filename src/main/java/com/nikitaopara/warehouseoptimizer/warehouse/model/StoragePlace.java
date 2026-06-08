@@ -64,6 +64,12 @@ public class StoragePlace {
     @Column(name = "max_height_mm", nullable = false)
     private Integer maxHeightMm;
 
+    @Column(name = "access_x_mm", nullable = false)
+    private Integer accessXMm;
+
+    @Column(name = "access_y_mm", nullable = false)
+    private Integer accessYMm;
+
     @Column(name = "distance_from_aisle_start_mm", nullable = false)
     private Integer distanceFromAisleStartMm;
 
@@ -83,6 +89,36 @@ public class StoragePlace {
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    public void setRackLevel(RackLevel rackLevel) {
+        this.rackLevel = rackLevel;
+
+        if (rackLevel != null) {
+            this.rackBay = rackLevel.getRackBay();
+            this.warehouse = rackLevel.getWarehouse();
+
+            if (rackLevel.getRackBay() != null) {
+                this.rackRow = rackLevel.getRackBay().getRackRow();
+            }
+        }
+    }
+
+    public void setRackBay(RackBay rackBay) {
+        this.rackBay = rackBay;
+
+        if (rackBay != null) {
+            this.rackRow = rackBay.getRackRow();
+            this.warehouse = rackBay.getWarehouse();
+        }
+    }
+
+    public void setRackRow(RackRow rackRow) {
+        this.rackRow = rackRow;
+
+        if (rackRow != null) {
+            this.warehouse = rackRow.getWarehouse();
+        }
+    }
 
     @PrePersist
     protected void onCreate() {
@@ -145,6 +181,8 @@ public class StoragePlace {
                 ", positionNumber=" + positionNumber +
                 ", maxWeightKg=" + maxWeightKg +
                 ", maxHeightMm=" + maxHeightMm +
+                ", accessXMm=" + accessXMm +
+                ", accessYMm=" + accessYMm +
                 ", distanceFromAisleStartMm=" + distanceFromAisleStartMm +
                 ", distanceFromEntryMm=" + distanceFromEntryMm +
                 ", status=" + status +

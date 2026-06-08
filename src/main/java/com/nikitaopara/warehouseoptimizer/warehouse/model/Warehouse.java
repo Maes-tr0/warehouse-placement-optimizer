@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 @Entity
@@ -37,8 +39,8 @@ public class Warehouse {
     private String code;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 50)
-    private WarehouseType type;
+    @Column(name = "layout_type", nullable = false, length = 80)
+    private WarehouseLayoutType layoutType;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
@@ -47,6 +49,14 @@ public class Warehouse {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by_user_id", nullable = false)
     private User createdBy;
+
+    @OneToMany(
+            mappedBy = "warehouse",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    @Builder.Default
+    private List<Aisle> aisles = new ArrayList<>();
 
     @Version
     @Column(nullable = false)
@@ -58,6 +68,24 @@ public class Warehouse {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    public void addAisle(Aisle aisle) {
+        if (aisle == null) {
+            return;
+        }
+
+        this.aisles.add(aisle);
+        aisle.setWarehouse(this);
+    }
+
+    public void removeAisle(Aisle aisle) {
+        if (aisle == null) {
+            return;
+        }
+
+        this.aisles.remove(aisle);
+        aisle.setWarehouse(null);
+    }
+
     @PrePersist
     protected void onCreate() {
         LocalDateTime now = LocalDateTime.now();
@@ -66,7 +94,7 @@ public class Warehouse {
         this.updatedAt = now;
 
         if (this.status == null) {
-            this.status = WarehouseStatus.DRAFT;
+            this.status = WarehouseStatus.ACTIVE;
         }
     }
 
@@ -95,12 +123,13 @@ public class Warehouse {
     public String toString() {
         return "Warehouse{" +
                 "id=" + id +
-                ", code='" + code + '\'' +
-                ", name='" + name + '\'' +
-                ", type=" + type +
+                ", warehouseCode='" + code + '\'' +
+                ", warehouseName='" + name + '\'' +
+                ", layoutType=" + layoutType +
                 ", status=" + status +
                 ", version=" + version +
                 ", createdBy=" + (createdBy != null ? createdBy.getFullName() : null) +
+                ", aisleCount=" + (aisles != null ? aisles.size() : 0) +
                 '}';
     }
 }
