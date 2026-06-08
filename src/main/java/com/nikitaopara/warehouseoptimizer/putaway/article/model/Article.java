@@ -1,4 +1,4 @@
-package com.nikitaopara.warehouseoptimizer.putaway.model;
+package com.nikitaopara.warehouseoptimizer.putaway.article.model;
 
 import jakarta.persistence.*;
 import lombok.*;

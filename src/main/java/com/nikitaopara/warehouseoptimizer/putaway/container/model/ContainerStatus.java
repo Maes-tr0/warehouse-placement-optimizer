@@ -1,4 +1,4 @@
-package com.nikitaopara.warehouseoptimizer.putaway.model;
+package com.nikitaopara.warehouseoptimizer.putaway.container.model;
 
 public enum ContainerStatus {
     WAITING_FOR_PLACEMENT,

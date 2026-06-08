@@ -24,6 +24,9 @@ public class SecurityConfig {
                         .requestMatchers("/admin/**")
                         .hasAnyRole("ROOT_ADMIN", "ADMIN")
 
+                        .requestMatchers("/operator/**")
+                        .hasAnyRole("ROOT_ADMIN", "ADMIN", "OPERATOR")
+
                         .anyRequest()
                         .authenticated()
                 )

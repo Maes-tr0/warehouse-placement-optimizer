@@ -1,5 +1,6 @@
-package com.nikitaopara.warehouseoptimizer.putaway.model;
+package com.nikitaopara.warehouseoptimizer.putaway.container.model;
 
+import com.nikitaopara.warehouseoptimizer.putaway.article.model.Article;
 import com.nikitaopara.warehouseoptimizer.warehouse.model.StoragePlace;
 import com.nikitaopara.warehouseoptimizer.warehouse.model.Warehouse;
 import jakarta.persistence.*;
@@ -188,6 +189,7 @@ public class Container {
     public String toString() {
         return "Container{" +
                 "id=" + id +
+                ", warehouseCode='" + getWarehouseCode() + '\'' +
                 ", containerNumber='" + containerNumber + '\'' +
                 ", articleNumber='" + getArticleNumber() + '\'' +
                 ", quantity=" + quantity +
@@ -199,5 +201,9 @@ public class Container {
                 ", receivedAt=" + receivedAt +
                 ", version=" + version +
                 '}';
+    }
+
+    private String getWarehouseCode() {
+        return warehouse != null ? warehouse.getCode() : null;
     }
 }
