@@ -1,4 +1,4 @@
-package com.nikitaopara.warehouseoptimizer.putaway.container.serivce;
+package com.nikitaopara.warehouseoptimizer.putaway.container.service;
 
 import com.nikitaopara.warehouseoptimizer.putaway.container.dto.ContainerResponse;
 import com.nikitaopara.warehouseoptimizer.putaway.container.dto.ReceiveContainerRequest;

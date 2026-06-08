@@ -2,7 +2,7 @@ package com.nikitaopara.warehouseoptimizer.putaway.container.controller;
 
 import com.nikitaopara.warehouseoptimizer.putaway.container.dto.ContainerResponse;
 import com.nikitaopara.warehouseoptimizer.putaway.container.dto.ReceiveContainerRequest;
-import com.nikitaopara.warehouseoptimizer.putaway.container.serivce.ContainerService;
+import com.nikitaopara.warehouseoptimizer.putaway.container.service.ContainerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
