@@ -15,6 +15,4 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
     boolean existsByArticleNumber(String articleNumber);
 
     List<Article> findByArticleNumberIn(Set<String> articleNumbers);
-
-    List<Article> findByArticleNumberIn(Collection<String> articleNumbers);
 }

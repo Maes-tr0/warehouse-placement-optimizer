@@ -44,7 +44,7 @@ public class ArticleService {
                 .map(this::toArticle)
                 .toList();
 
-        List<Article> savedArticles = articleDataService.saveAll(articles);
+        List<Article> savedArticles = articleDataService.saveOnlyNew(articles);
 
         List<ArticleResponse> responses = savedArticles
                 .stream()
@@ -57,7 +57,6 @@ public class ArticleService {
                 responses
         );
     }
-
     @Transactional(readOnly = true)
     public ArticleResponse getArticleById(Long id) {
         Article article = articleDataService.getByIdOrThrow(id);

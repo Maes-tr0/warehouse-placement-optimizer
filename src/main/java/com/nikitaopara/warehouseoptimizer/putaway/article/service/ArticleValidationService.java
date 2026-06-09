@@ -12,8 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
-import java.util.Set;
-import java.util.TreeSet;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +23,7 @@ public class ArticleValidationService {
     public void validateCreateArticleRequest(User actor, CreateArticleRequest request) {
         validateAdminActor(actor);
         validateCreateArticleFields(request);
+        validateArticleNumberDoesNotExist(request.articleNumber());
     }
 
     public void validateCreateArticlesBatchRequest(
@@ -41,11 +40,8 @@ public class ArticleValidationService {
             throw new IllegalArgumentException("Articles are required");
         }
 
-        Set<String> articleNumbers = new TreeSet<>();
-
         for (CreateArticleRequest articleRequest : request.articles()) {
             validateCreateArticleFields(articleRequest);
-            validateArticleNumberIsUniqueInBatch(articleRequest, articleNumbers);
         }
     }
 
@@ -73,7 +69,7 @@ public class ArticleValidationService {
         }
 
         if (request.unitWeightKg() != null) {
-            validatePositiveBigDecimal(request.unitWeightKg(), "Unit weight must be greater than zero");
+            validatePositiveBigDecimal(request.unitWeightKg());
         }
 
         if (request.maxQuantityPerPallet() != null) {
@@ -110,14 +106,14 @@ public class ArticleValidationService {
 
     private void validateCreateArticleFields(CreateArticleRequest request) {
         validateCreateRequestExists(request);
-        validateArticleNumberForCreate(request.articleNumber());
+        validateArticleNumberFormat(request.articleNumber());
         validateRequiredText(request.name());
         validateRequiredObject(request.unitType());
 
         validatePositiveInteger(request.unitWidthMm(), "Unit width must be greater than zero");
         validatePositiveInteger(request.unitLengthMm(), "Unit length must be greater than zero");
         validatePositiveInteger(request.unitHeightMm(), "Unit height must be greater than zero");
-        validatePositiveBigDecimal(request.unitWeightKg(), "Unit weight must be greater than zero");
+        validatePositiveBigDecimal(request.unitWeightKg());
         validatePositiveInteger(
                 request.maxQuantityPerPallet(),
                 "Max quantity per pallet must be greater than zero"
@@ -130,14 +126,12 @@ public class ArticleValidationService {
         }
     }
 
-    private void validateArticleNumberForCreate(String articleNumber) {
+    private void validateArticleNumberDoesNotExist(String articleNumber) {
         if (!StringUtils.hasText(articleNumber)) {
             return;
         }
 
         String normalizedArticleNumber = articleNumber.trim();
-
-        validateArticleNumberFormat(normalizedArticleNumber);
 
         if (articleDataService.existsByArticleNumber(normalizedArticleNumber)) {
             throw new IllegalArgumentException(
@@ -155,23 +149,6 @@ public class ArticleValidationService {
 
         if (!normalizedArticleNumber.matches("\\d+")) {
             throw new IllegalArgumentException("Article number must contain only digits");
-        }
-    }
-
-    private void validateArticleNumberIsUniqueInBatch(
-            CreateArticleRequest request,
-            Set<String> articleNumbers
-    ) {
-        if (!StringUtils.hasText(request.articleNumber())) {
-            return;
-        }
-
-        String normalizedArticleNumber = request.articleNumber().trim();
-
-        if (!articleNumbers.add(normalizedArticleNumber)) {
-            throw new IllegalArgumentException(
-                    "Duplicate article number in request: " + normalizedArticleNumber
-            );
         }
     }
 
@@ -193,9 +170,9 @@ public class ArticleValidationService {
         }
     }
 
-    private void validatePositiveBigDecimal(BigDecimal value, String message) {
+    private void validatePositiveBigDecimal(BigDecimal value) {
         if (value == null || value.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException(message);
+            throw new IllegalArgumentException("Unit weight must be greater than zero");
         }
     }
 }
