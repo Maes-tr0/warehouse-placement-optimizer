@@ -3,6 +3,7 @@ package com.nikitaopara.warehouseoptimizer.putaway.article.service;
 import com.nikitaopara.warehouseoptimizer.account.model.Role;
 import com.nikitaopara.warehouseoptimizer.account.model.User;
 import com.nikitaopara.warehouseoptimizer.putaway.article.dto.CreateArticleRequest;
+import com.nikitaopara.warehouseoptimizer.putaway.article.dto.CreateArticlesBatchRequest;
 import com.nikitaopara.warehouseoptimizer.putaway.article.dto.UpdateArticleRequest;
 import com.nikitaopara.warehouseoptimizer.putaway.container.repository.ContainerRepository;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.util.Set;
+import java.util.TreeSet;
 
 @Service
 @RequiredArgsConstructor
@@ -90,9 +93,65 @@ public class ArticleValidationService {
         }
     }
 
+    public void validateCreateArticlesBatchRequest(
+            User actor,
+            CreateArticlesBatchRequest request
+    ) {
+        validateAdminActor(actor);
+
+        if (request == null) {
+            throw new IllegalArgumentException("Create articles batch request cannot be null");
+        }
+
+        if (request.articles() == null || request.articles().isEmpty()) {
+            throw new IllegalArgumentException("Articles are required");
+        }
+
+        Set<String> articleNumbers = new TreeSet<>();
+
+        for (CreateArticleRequest articleRequest : request.articles()) {
+            validateCreateArticleBatchItemRequest(articleRequest);
+
+            if (StringUtils.hasText(articleRequest.articleNumber())) {
+                String normalizedArticleNumber = articleRequest.articleNumber().trim();
+
+                if (!articleNumbers.add(normalizedArticleNumber)) {
+                    throw new IllegalArgumentException(
+                            "Duplicate article number in request: " + normalizedArticleNumber
+                    );
+                }
+            }
+        }
+    }
+
+    private void validateCreateArticleBatchItemRequest(CreateArticleRequest request) {
+        validateCreateRequestExists(request);
+        validateArticleNumberFormat(request.articleNumber());
+        validateRequiredText(request.name());
+        validateRequiredObject(request.unitType());
+
+        validatePositiveInteger(request.unitWidthMm(), "Unit width must be greater than zero");
+        validatePositiveInteger(request.unitLengthMm(), "Unit length must be greater than zero");
+        validatePositiveInteger(request.unitHeightMm(), "Unit height must be greater than zero");
+        validatePositiveBigDecimal(request.unitWeightKg());
+        validatePositiveInteger(request.maxQuantityPerPallet(), "Max quantity per pallet must be greater than zero");
+    }
+
     private void validateCreateRequestExists(CreateArticleRequest request) {
         if (request == null) {
             throw new IllegalArgumentException("Create article request cannot be null");
+        }
+    }
+
+    private void validateArticleNumberFormat(String articleNumber) {
+        if (!StringUtils.hasText(articleNumber)) {
+            return;
+        }
+
+        String normalizedArticleNumber = articleNumber.trim();
+
+        if (!normalizedArticleNumber.matches("\\d+")) {
+            throw new IllegalArgumentException("Article number must contain only digits");
         }
     }
 
@@ -103,9 +162,7 @@ public class ArticleValidationService {
 
         String normalizedArticleNumber = articleNumber.trim();
 
-        if (!normalizedArticleNumber.matches("\\d+")) {
-            throw new IllegalArgumentException("Article number must contain only digits");
-        }
+        validateArticleNumberFormat(normalizedArticleNumber);
 
         if (articleDataService.existsByArticleNumber(normalizedArticleNumber)) {
             throw new IllegalArgumentException("Article with this article number already exists");

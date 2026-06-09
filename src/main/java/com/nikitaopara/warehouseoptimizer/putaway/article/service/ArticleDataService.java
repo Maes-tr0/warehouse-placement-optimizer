@@ -7,6 +7,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -38,5 +40,20 @@ public class ArticleDataService {
 
     public void delete(Article article) {
         articleRepository.delete(article);
+    }
+
+    public List<Article> saveAll(List<Article> articles) {
+        return articleRepository.saveAll(articles);
+    }
+
+    public Set<String> getExistingArticleNumbers(Set<String> articleNumbers) {
+        if (articleNumbers == null || articleNumbers.isEmpty()) {
+            return Set.of();
+        }
+
+        return articleRepository.findByArticleNumberIn(articleNumbers)
+                .stream()
+                .map(Article::getArticleNumber)
+                .collect(Collectors.toSet());
     }
 }
