@@ -11,7 +11,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -25,11 +29,6 @@ public class ContainerDataService {
         return containerRepository.save(container);
     }
 
-    public Container getByIdOrThrow(Long id) {
-        return containerRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Container not found by id: " + id));
-    }
-
     public Container getByContainerNumberOrThrow(String containerNumber) {
         return containerRepository.findByContainerNumber(containerNumber)
                 .orElseThrow(() -> new IllegalArgumentException("Container not found by number: " + containerNumber));
@@ -41,10 +40,6 @@ public class ContainerDataService {
 
     public boolean existsByContainerNumber(String containerNumber) {
         return containerRepository.existsByContainerNumber(containerNumber);
-    }
-
-    public boolean existsByArticleId(Long articleId) {
-        return containerRepository.existsByArticleId(articleId);
     }
 
     public List<Container> getStoredContainersByWarehouseAndArticle(Long warehouseId, Long articleId) {
@@ -63,5 +58,39 @@ public class ContainerDataService {
     public StoragePlace getStoragePlaceByWarehouseAndCodeOrThrow(Long warehouseId, String storagePlaceCode) {
         return storagePlaceRepository.findStoragePlaceByWarehouseIdAndCode(warehouseId, storagePlaceCode)
                 .orElseThrow(() -> new IllegalArgumentException("Storage place not found by code: " + storagePlaceCode));
+    }
+
+    public List<Container> saveOnlyNew(List<Container> containers) {
+        if (containers == null || containers.isEmpty()) {
+            return List.of();
+        }
+
+        Map<String, Container> uniqueContainersByNumber = containers.stream()
+                .collect(Collectors.toMap(
+                        container -> container.getContainerNumber().trim(),
+                        container -> container,
+                        (firstContainer, duplicateContainer) -> firstContainer,
+                        LinkedHashMap::new
+                ));
+
+        Set<String> containerNumbers = uniqueContainersByNumber.keySet();
+
+        Set<String> existingContainerNumbers = containerRepository
+                .findByContainerNumberIn(containerNumbers)
+                .stream()
+                .map(Container::getContainerNumber)
+                .collect(Collectors.toSet());
+
+        List<Container> containersToSave = uniqueContainersByNumber.entrySet()
+                .stream()
+                .filter(entry -> !existingContainerNumbers.contains(entry.getKey()))
+                .map(Map.Entry::getValue)
+                .toList();
+
+        if (containersToSave.isEmpty()) {
+            return List.of();
+        }
+
+        return containerRepository.saveAll(containersToSave);
     }
 }

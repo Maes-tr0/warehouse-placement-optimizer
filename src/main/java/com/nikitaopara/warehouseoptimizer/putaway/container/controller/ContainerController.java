@@ -1,10 +1,6 @@
 package com.nikitaopara.warehouseoptimizer.putaway.container.controller;
 
-import com.nikitaopara.warehouseoptimizer.putaway.container.dto.ContainerResponse;
-import com.nikitaopara.warehouseoptimizer.putaway.container.dto.MergeContainerRequest;
-import com.nikitaopara.warehouseoptimizer.putaway.container.dto.PlaceContainerRequest;
-import com.nikitaopara.warehouseoptimizer.putaway.container.dto.ReceiveContainerRequest;
-import com.nikitaopara.warehouseoptimizer.putaway.container.dto.UpdateContainerRequest;
+import com.nikitaopara.warehouseoptimizer.putaway.container.dto.*;
 import com.nikitaopara.warehouseoptimizer.putaway.container.service.ContainerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -70,6 +66,15 @@ public class ContainerController {
     @PatchMapping("/{containerNumber}/remove")
     public ResponseEntity<ContainerResponse> removeContainer(@PathVariable String containerNumber) {
         ContainerResponse response = containerService.removeContainer(containerNumber);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/receive/batch")
+    public ResponseEntity<ReceiveContainersBatchResponse> receiveContainersBatch(
+            @RequestBody ReceiveContainersBatchRequest request
+    ) {
+        ReceiveContainersBatchResponse response = containerService.receiveContainersBatch(request);
 
         return ResponseEntity.ok(response);
     }

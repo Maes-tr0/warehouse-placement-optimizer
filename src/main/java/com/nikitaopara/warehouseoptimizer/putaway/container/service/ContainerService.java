@@ -4,11 +4,7 @@ import com.nikitaopara.warehouseoptimizer.account.model.User;
 import com.nikitaopara.warehouseoptimizer.auth.service.AuthenticatedUserService;
 import com.nikitaopara.warehouseoptimizer.putaway.article.model.Article;
 import com.nikitaopara.warehouseoptimizer.putaway.article.service.ArticleDataService;
-import com.nikitaopara.warehouseoptimizer.putaway.container.dto.ContainerResponse;
-import com.nikitaopara.warehouseoptimizer.putaway.container.dto.MergeContainerRequest;
-import com.nikitaopara.warehouseoptimizer.putaway.container.dto.PlaceContainerRequest;
-import com.nikitaopara.warehouseoptimizer.putaway.container.dto.ReceiveContainerRequest;
-import com.nikitaopara.warehouseoptimizer.putaway.container.dto.UpdateContainerRequest;
+import com.nikitaopara.warehouseoptimizer.putaway.container.dto.*;
 import com.nikitaopara.warehouseoptimizer.putaway.container.model.Container;
 import com.nikitaopara.warehouseoptimizer.putaway.container.model.ContainerStatus;
 import com.nikitaopara.warehouseoptimizer.warehouse.model.StoragePlace;
@@ -55,13 +51,6 @@ public class ContainerService {
         Container savedContainer = containerDataService.save(container);
 
         return ContainerResponse.from(savedContainer);
-    }
-
-    @Transactional(readOnly = true)
-    public ContainerResponse getContainerById(Long id) {
-        Container container = containerDataService.getByIdOrThrow(id);
-
-        return ContainerResponse.from(container);
     }
 
     @Transactional(readOnly = true)
@@ -197,5 +186,53 @@ public class ContainerService {
         Container savedContainer = containerDataService.save(container);
 
         return ContainerResponse.from(savedContainer);
+    }
+
+    @Transactional
+    public ReceiveContainersBatchResponse receiveContainersBatch(ReceiveContainersBatchRequest request) {
+        User actor = authenticatedUserService.getCurrentUser();
+
+        containerValidationService.validateReceiveContainersBatchRequest(actor, request);
+
+        List<Container> containers = request.containers()
+                .stream()
+                .map(this::toContainer)
+                .toList();
+
+        List<Container> savedContainers = containerDataService.saveOnlyNew(containers);
+
+        List<ContainerResponse> responses = savedContainers
+                .stream()
+                .map(ContainerResponse::from)
+                .toList();
+
+        return new ReceiveContainersBatchResponse(
+                request.containers().size(),
+                savedContainers.size(),
+                responses
+        );
+    }
+
+    private Container toContainer(ReceiveContainerRequest request) {
+        Warehouse warehouse = containerDataService.getWarehouseByIdOrThrow(request.warehouseId());
+
+        Article article = articleDataService.getByArticleNumberOrThrow(
+                request.articleNumber().trim()
+        );
+
+        containerValidationService.validateContainerQuantityFitsArticle(
+                article,
+                request.quantity()
+        );
+
+        return Container.builder()
+                .warehouse(warehouse)
+                .containerNumber(request.containerNumber().trim())
+                .article(article)
+                .quantity(request.quantity())
+                .weightKg(request.weightKg())
+                .heightMm(request.heightMm())
+                .status(ContainerStatus.WAITING_FOR_PLACEMENT)
+                .build();
     }
 }
