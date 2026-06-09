@@ -77,7 +77,6 @@ public class AccountValidationService {
     }
 
 
-
     private void validateActor(User actor) {
         if (actor == null) {
             throw new AccessDeniedException("Authenticated user is required");

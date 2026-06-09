@@ -8,12 +8,12 @@ import java.time.LocalDateTime;
 
 public record UserResponse(
         Long id
-        ,String email
-        ,String fullName
-        ,Role role
-        ,Status status
-        ,LocalDateTime createdAt
-        ,LocalDateTime updatedAt
+        , String email
+        , String fullName
+        , Role role
+        , Status status
+        , LocalDateTime createdAt
+        , LocalDateTime updatedAt
 ) {
     public static UserResponse from(User user) {
         return new UserResponse(

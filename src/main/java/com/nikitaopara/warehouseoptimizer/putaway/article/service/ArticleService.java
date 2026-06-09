@@ -57,6 +57,7 @@ public class ArticleService {
                 responses
         );
     }
+
     @Transactional(readOnly = true)
     public ArticleResponse getArticleById(Long id) {
         Article article = articleDataService.getByIdOrThrow(id);
