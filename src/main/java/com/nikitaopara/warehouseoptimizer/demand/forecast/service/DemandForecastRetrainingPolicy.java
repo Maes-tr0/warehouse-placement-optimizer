@@ -5,7 +5,9 @@ import com.nikitaopara.warehouseoptimizer.demand.forecast.model.DemandForecastMo
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 
 @Service
@@ -30,7 +32,7 @@ public class DemandForecastRetrainingPolicy {
             }
 
             if (latestAttempt.getTrainedAt() == null) {
-                return false;
+                return isStaleTraining(latestAttempt, today.atStartOfDay());
             }
 
             return ageInDays(latestAttempt, today)
@@ -55,5 +57,17 @@ public class DemandForecastRetrainingPolicy {
                 0,
                 ChronoUnit.DAYS.between(model.getTrainedAt().toLocalDate(), today)
         );
+    }
+
+    private boolean isStaleTraining(
+            DemandForecastModel model,
+            LocalDateTime now
+    ) {
+        if (model.getCreatedAt() == null) {
+            return false;
+        }
+
+        return Duration.between(model.getCreatedAt(), now).toHours()
+                >= properties.getStaleTrainingHours();
     }
 }

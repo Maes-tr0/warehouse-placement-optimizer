@@ -115,6 +115,9 @@ public class DemandForecastDatasetBuilder {
                 .filter(this::isValid)
                 .filter(observation -> articleId.equals(observation.articleId()))
                 .filter(observation -> !observation.orderedAt().toLocalDate().isAfter(featureDate))
+                .filter(observation -> !observation.orderedAt().toLocalDate().isBefore(
+                        featureDate.minusDays(properties.getMaximumLookbackDays())
+                ))
                 .toList())
                 .get(articleId);
 

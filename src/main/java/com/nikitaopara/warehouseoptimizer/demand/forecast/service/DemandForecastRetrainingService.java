@@ -10,7 +10,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.Optional;
 
 @Service
@@ -38,9 +37,9 @@ public class DemandForecastRetrainingService {
         long newObservationCount = activeModel == null
                 ? 0
                 : orderDemandItemRepository
-                        .countByWarehouseIdAndOrderDemandOrderDateTimeAfter(
+                        .countByWarehouseIdAndCreatedAtAfter(
                                 warehouseId,
-                                activeModel.getDataCutoff().atTime(LocalTime.MAX)
+                                activeModel.getTrainedAt()
                         );
 
         if (!policy.shouldRetrain(activeModel, latestAttempt, newObservationCount, today)) {
@@ -50,7 +49,7 @@ public class DemandForecastRetrainingService {
         return Optional.of(trainingService.train(
                 warehouseId,
                 DemandForecastTrainingTrigger.SCHEDULED,
-                today
+                today.minusDays(1)
         ));
     }
 }

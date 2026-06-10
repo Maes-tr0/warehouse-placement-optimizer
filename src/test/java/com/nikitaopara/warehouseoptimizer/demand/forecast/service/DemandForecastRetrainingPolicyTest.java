@@ -42,6 +42,15 @@ class DemandForecastRetrainingPolicyTest {
     }
 
     @Test
+    void retriesTrainingAttemptThatWasLeftStale() {
+        DemandForecastModel latest = DemandForecastModel.builder()
+                .createdAt(today.minusDays(2).atStartOfDay())
+                .build();
+
+        assertThat(policy.shouldRetrain(null, latest, 0, today)).isTrue();
+    }
+
+    @Test
     void retrainsAfterEnoughNewObservationsAndMinimumInterval() {
         DemandForecastModel active = modelTrainedDaysAgo(30);
 

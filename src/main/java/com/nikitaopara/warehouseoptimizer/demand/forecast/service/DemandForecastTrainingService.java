@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 
@@ -38,7 +39,10 @@ public class DemandForecastTrainingService {
             Long warehouseId,
             DemandForecastTrainingTrigger trigger
     ) {
-        return train(warehouseId, trigger, LocalDate.now());
+        LocalDate completedDataDate = LocalDate.now(
+                ZoneId.of(properties.getTrainingZone())
+        ).minusDays(1);
+        return train(warehouseId, trigger, completedDataDate);
     }
 
     @Transactional
