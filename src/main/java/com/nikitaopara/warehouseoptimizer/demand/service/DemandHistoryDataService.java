@@ -1,5 +1,6 @@
 package com.nikitaopara.warehouseoptimizer.demand.service;
 
+import com.nikitaopara.warehouseoptimizer.common.error.ResourceNotFoundException;
 import com.nikitaopara.warehouseoptimizer.demand.model.OrderDemand;
 import com.nikitaopara.warehouseoptimizer.demand.repository.OrderDemandRepository;
 import com.nikitaopara.warehouseoptimizer.putaway.article.model.Article;
@@ -26,7 +27,7 @@ public class DemandHistoryDataService {
 
     public Warehouse getWarehouseByIdOrThrow(Long warehouseId) {
         return warehouseRepository.findById(warehouseId)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "Warehouse not found by id: " + warehouseId
                 ));
     }
