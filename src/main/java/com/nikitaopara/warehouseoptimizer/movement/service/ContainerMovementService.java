@@ -11,11 +11,35 @@ import com.nikitaopara.warehouseoptimizer.warehouse.model.StoragePlace;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class ContainerMovementService {
 
     private final ContainerMovementRepository movementRepository;
+
+    public ContainerMovement recordOperationalMovement(
+            Container source,
+            Container target,
+            StoragePlace from,
+            StoragePlace to,
+            int movedQuantity,
+            ContainerMovementType type,
+            User actor
+    ) {
+        return saveMovement(
+                null,
+                null,
+                source,
+                target,
+                from,
+                to,
+                movedQuantity,
+                type,
+                actor
+        );
+    }
 
     public ContainerMovement recordOptimizationMovement(
             WarehouseOptimizationPlan plan,
@@ -28,8 +52,42 @@ public class ContainerMovementService {
             ContainerMovementType type,
             User actor
     ) {
+        return saveMovement(
+                plan,
+                step,
+                source,
+                target,
+                from,
+                to,
+                movedQuantity,
+                type,
+                actor
+        );
+    }
+
+    public List<ContainerMovement> getWarehouseHistory(Long warehouseId) {
+        return movementRepository.findByWarehouseIdOrderByPerformedAtDesc(warehouseId);
+    }
+
+    public List<ContainerMovement> getContainerHistory(String containerNumber) {
+        return movementRepository.findByContainerContainerNumberOrderByPerformedAtDesc(
+                containerNumber
+        );
+    }
+
+    private ContainerMovement saveMovement(
+            WarehouseOptimizationPlan plan,
+            WarehouseRelocationStep step,
+            Container source,
+            Container target,
+            StoragePlace from,
+            StoragePlace to,
+            int movedQuantity,
+            ContainerMovementType type,
+            User actor
+    ) {
         ContainerMovement movement = ContainerMovement.builder()
-                .warehouse(plan.getWarehouse())
+                .warehouse(source.getWarehouse())
                 .container(source)
                 .targetContainer(target)
                 .fromStoragePlace(from)

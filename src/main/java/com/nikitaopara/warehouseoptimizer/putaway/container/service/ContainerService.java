@@ -2,6 +2,8 @@ package com.nikitaopara.warehouseoptimizer.putaway.container.service;
 
 import com.nikitaopara.warehouseoptimizer.account.model.User;
 import com.nikitaopara.warehouseoptimizer.auth.service.AuthenticatedUserService;
+import com.nikitaopara.warehouseoptimizer.movement.model.ContainerMovementType;
+import com.nikitaopara.warehouseoptimizer.movement.service.ContainerMovementService;
 import com.nikitaopara.warehouseoptimizer.putaway.article.dto.ArticleResponse;
 import com.nikitaopara.warehouseoptimizer.putaway.article.dto.CreateArticlesBatchRequest;
 import com.nikitaopara.warehouseoptimizer.putaway.article.dto.CreateArticlesBatchResponse;
@@ -33,6 +35,7 @@ public class ContainerService {
     private final ContainerDataService containerDataService;
     private final ContainerValidationService containerValidationService;
     private final ContainerDimensionCalculationService dimensionCalculationService;
+    private final ContainerMovementService movementService;
 
     @Transactional
     public ContainerResponse receiveContainer(ReceiveContainerRequest request) {
@@ -128,6 +131,16 @@ public class ContainerService {
 
         Container savedContainer = containerDataService.save(container);
 
+        movementService.recordOperationalMovement(
+                savedContainer,
+                null,
+                null,
+                storagePlace,
+                savedContainer.getQuantity(),
+                ContainerMovementType.PUTAWAY,
+                actor
+        );
+
         return ContainerResponse.from(savedContainer);
     }
 
@@ -166,10 +179,22 @@ public class ContainerService {
         targetContainer.setWeightKg(mergedWeightKg);
         targetContainer.setHeightMm(mergedHeightMm);
 
+        int movedQuantity = sourceContainer.getQuantity();
+        StoragePlace targetStoragePlace = targetContainer.getCurrentStoragePlace();
         sourceContainer.markAsMergedInto(targetContainer);
 
         containerDataService.save(targetContainer);
         Container savedSourceContainer = containerDataService.save(sourceContainer);
+
+        movementService.recordOperationalMovement(
+                savedSourceContainer,
+                targetContainer,
+                null,
+                targetStoragePlace,
+                movedQuantity,
+                ContainerMovementType.MERGE,
+                actor
+        );
 
         return ContainerResponse.from(savedSourceContainer);
     }
@@ -191,6 +216,16 @@ public class ContainerService {
         container.markAsRemoved();
 
         Container savedContainer = containerDataService.save(container);
+
+        movementService.recordOperationalMovement(
+                savedContainer,
+                null,
+                storagePlace,
+                null,
+                savedContainer.getQuantity(),
+                ContainerMovementType.REMOVAL,
+                actor
+        );
 
         return ContainerResponse.from(savedContainer);
     }
