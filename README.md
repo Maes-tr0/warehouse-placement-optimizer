@@ -934,9 +934,12 @@ Then set these environment values in Postman and select the environment in the t
 right corner before opening Collection Runner:
 
 ```text
-username = admin@example.com
-password = local-test-password
+rootAdminEmail = admin@example.com
+rootAdminPassword = local-test-password
 ```
+
+The AI collection also accepts the older aliases `username` and `password`, but the
+standard project environment uses `rootAdminEmail` and `rootAdminPassword`.
 
 If the database already contains a `ROOT_ADMIN`, bootstrap variables do not replace
 that account. Use the existing account credentials or reset the local database first.

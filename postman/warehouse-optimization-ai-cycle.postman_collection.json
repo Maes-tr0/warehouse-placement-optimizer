@@ -10,12 +10,12 @@
     "basic": [
       {
         "key": "username",
-        "value": "{{username}}",
+        "value": "{{rootAdminEmail}}",
         "type": "string"
       },
       {
         "key": "password",
-        "value": "{{password}}",
+        "value": "{{rootAdminPassword}}",
         "type": "string"
       }
     ]
@@ -26,11 +26,13 @@
       "script": {
         "type": "text/javascript",
         "exec": [
-          "const username = pm.environment.get('username');",
-          "const password = pm.environment.get('password');",
-          "if (!username || !password || password === 'replace-with-your-password') {",
-          "  throw new Error('Select the Warehouse Optimization AI - Local environment and set its real ROOT_ADMIN username/password before running the collection.');",
+          "const rootAdminEmail = pm.environment.get('rootAdminEmail') || pm.environment.get('username');",
+          "const rootAdminPassword = pm.environment.get('rootAdminPassword') || pm.environment.get('password');",
+          "if (!rootAdminEmail || !rootAdminPassword || rootAdminPassword === 'replace-with-your-password') {",
+          "  throw new Error('Select a local environment and set real rootAdminEmail/rootAdminPassword credentials before running the collection.');",
           "}",
+          "pm.variables.set('rootAdminEmail', rootAdminEmail);",
+          "pm.variables.set('rootAdminPassword', rootAdminPassword);",
           "if (!pm.collectionVariables.get('runId')) {",
           "  const runId = Date.now().toString();",
           "  pm.collectionVariables.set('runId', runId);",
