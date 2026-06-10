@@ -1,8 +1,8 @@
 # Warehouse Placement Optimizer
 
-Warehouse Placement Optimizer is a Java/Spring Boot web application for warehouse layout generation, container receiving, and putaway operations.
+Warehouse Placement Optimizer is a Java/Spring Boot web application for warehouse layout generation, container receiving, putaway operations, and learned demand forecasting.
 
-The main goal of the project is to reduce warehouse picking and placement time by organizing pallet storage more intelligently. The current version implements the base warehouse setup and operator putaway flow. Future versions will add placement recommendation logic and AI-based demand prediction.
+The main goal of the project is to reduce warehouse picking and placement time by organizing pallet storage more intelligently. The current version implements warehouse setup, operator putaway, relocation recommendations, and Java-based ML demand prediction.
 
 ---
 
@@ -47,6 +47,8 @@ Implemented:
 * placement recommendation approval, rejection, and expiration;
 * demand history import;
 * seasonal and recency-weighted demand scoring;
+* Tribuo CART demand forecast training and model versioning;
+* scheduled retraining with chronological validation and baseline protection;
 * scheduled warehouse optimization assessments;
 * draft optimization plans with merge, move, and buffered swap steps;
 * scan-validated relocation execution;
@@ -55,7 +57,6 @@ Implemented:
 
 Not implemented yet:
 
-* AI/ML demand prediction;
 * order picking flow;
 * advanced warehouse layout types;
 * real UI/browser scanner interface.
@@ -72,6 +73,7 @@ Not implemented yet:
 * Hibernate
 * PostgreSQL
 * Flyway
+* Tribuo 4.3.2
 * Maven
 * Docker Compose
 
@@ -666,6 +668,10 @@ V3__create_putaway_tables.sql
 V4__create_placement_recommendations_table.sql
 V5__create_demand_history_tables.sql
 V6__add_placement_recommendation_expiration.sql
+V7__create_warehouse_optimization_assessments.sql
+V8__create_warehouse_optimization_plans.sql
+V9__create_container_movements.sql
+V10__create_demand_forecast_models.sql
 ```
 
 ### V1
@@ -704,6 +710,14 @@ Creates demand history tables:
 ### V6
 
 Adds recommendation expiration and active reservation constraints.
+
+### V7-V9
+
+Create optimization assessments, relocation plans, scan-validated steps, and immutable container movement history.
+
+### V10
+
+Creates versioned demand forecast model storage, validation metrics, and the serialized Tribuo model artifact.
 
 ---
 
@@ -783,7 +797,6 @@ Current tested flow:
 
 Current implementation does not yet support:
 
-* AI/ML demand prediction;
 * order picking optimization;
 * learning from measured picking duration;
 * obstacle-aware graph routing between storage places;
@@ -798,9 +811,10 @@ Current implementation does not yet support:
 
 ## Warehouse Optimization Workflow
 
-The current optimization implementation is an explainable statistical baseline.
-It uses order recency, yearly season proximity, article demand, warehouse distance,
-container dimensions, and configured handling speed. It is not yet a trained ML model.
+The optimizer uses a hybrid demand model. A validated Tribuo CART regression model
+predicts article demand for the next 14 completed days. Articles without enough
+history and warehouses without an active ML model automatically use the explainable
+recency and seasonality baseline.
 
 Default thresholds:
 
@@ -831,4 +845,67 @@ GET  /admin/container-movements?warehouseId={warehouseId}
 ```
 
 The next modeling stage is to record real picking operations and use measured route
-duration to train and validate demand and travel-time models.
+duration to train and validate travel-time models.
+
+---
+
+## Demand Forecast Training
+
+The training dataset is built from `order_demand_items`. Every article is converted
+into a continuous daily series, so days without orders are represented as zero demand.
+
+Current features include:
+
+* quantity lags for 1, 7, 14, and 28 days;
+* rolling quantity totals and means for 7, 28, and 90 days;
+* active demand days and order count;
+* days since the last demand and article history age;
+* short-term versus long-term trend;
+* cyclic day-of-week and day-of-year seasonality.
+
+The target is the total article quantity ordered during the following 14 days. The
+last 60 days are reserved for chronological validation. A gap equal to the forecast
+horizon prevents training labels from overlapping the validation period.
+
+The candidate model is compared with a rolling 28-day mean baseline. It becomes
+`ACTIVE` only when validation MAE improves by at least 2% by default. Otherwise it is
+stored as `REJECTED`, and the previous active model remains in use.
+
+Retraining rules:
+
+* the scheduler checks active warehouses every day at `03:30`;
+* training uses completed days only;
+* normal retraining cannot happen more often than every 30 days;
+* 200 newly imported order item observations can trigger retraining after that interval;
+* retraining is forced after 90 days;
+* a failed or rejected warehouse is retried after the minimum interval;
+* a training attempt left stale for 24 hours can be retried.
+
+All thresholds and intervals are configurable with `DEMAND_FORECAST_*` environment
+variables.
+
+### Postman Requests
+
+Use Basic Auth with an `ADMIN` or `ROOT_ADMIN` account. These requests do not require
+a JSON body.
+
+Train manually:
+
+```http
+POST http://localhost:8080/admin/warehouses/1/demand-forecast-models/train
+```
+
+Get the latest training attempt:
+
+```http
+GET http://localhost:8080/admin/warehouses/1/demand-forecast-models/latest
+```
+
+Get all model versions and their metrics:
+
+```http
+GET http://localhost:8080/admin/warehouses/1/demand-forecast-models
+```
+
+Manual training returns `400 Bad Request` when there are fewer than the configured
+training or validation samples. Import more historical orders before retrying.
