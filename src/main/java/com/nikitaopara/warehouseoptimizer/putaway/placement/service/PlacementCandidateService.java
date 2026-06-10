@@ -10,7 +10,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.util.*;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -23,9 +27,24 @@ public class PlacementCandidateService {
 
     public Optional<Container> findBestMergeRecommendationCandidate(Container sourceContainer) {
         Long warehouseId = sourceContainer.getWarehouse().getId();
-        Long articleId = sourceContainer.getArticle().getId();
+        Set<Long> suggestedTargetContainerIds =
+                recommendationDataService.getSuggestedMergeTargetContainerIds(warehouseId);
+        Set<Long> previouslyRecommendedTargetContainerIds =
+                recommendationDataService.getPreviouslyRecommendedTargetContainerIds(sourceContainer);
 
-        Set<Long> blockedTargetContainerIds = getBlockedTargetContainerIds(sourceContainer);
+        Set<Long> preferredBlockedIds = new HashSet<>(suggestedTargetContainerIds);
+        preferredBlockedIds.addAll(previouslyRecommendedTargetContainerIds);
+
+        return findBestMergeCandidate(sourceContainer, preferredBlockedIds)
+                .or(() -> findBestMergeCandidate(sourceContainer, suggestedTargetContainerIds));
+    }
+
+    private Optional<Container> findBestMergeCandidate(
+            Container sourceContainer,
+            Set<Long> blockedTargetContainerIds
+    ) {
+        Long warehouseId = sourceContainer.getWarehouse().getId();
+        Long articleId = sourceContainer.getArticle().getId();
 
         return containerDataService.getStoredContainersByWarehouseAndArticle(warehouseId, articleId)
                 .stream()
@@ -42,8 +61,23 @@ public class PlacementCandidateService {
 
     public Optional<StoragePlace> findBestPlaceRecommendationCandidate(Container sourceContainer) {
         Long warehouseId = sourceContainer.getWarehouse().getId();
+        Set<Long> suggestedStoragePlaceIds =
+                recommendationDataService.getSuggestedStoragePlaceIds(warehouseId);
+        Set<Long> previouslyRecommendedStoragePlaceIds =
+                recommendationDataService.getPreviouslyRecommendedStoragePlaceIds(sourceContainer);
 
-        Set<Long> blockedStoragePlaceIds = getBlockedStoragePlaceIds(sourceContainer);
+        Set<Long> preferredBlockedIds = new HashSet<>(suggestedStoragePlaceIds);
+        preferredBlockedIds.addAll(previouslyRecommendedStoragePlaceIds);
+
+        return findBestStoragePlaceCandidate(sourceContainer, preferredBlockedIds)
+                .or(() -> findBestStoragePlaceCandidate(sourceContainer, suggestedStoragePlaceIds));
+    }
+
+    private Optional<StoragePlace> findBestStoragePlaceCandidate(
+            Container sourceContainer,
+            Set<Long> blockedStoragePlaceIds
+    ) {
+        Long warehouseId = sourceContainer.getWarehouse().getId();
 
         return storagePlaceRepository
                 .findByWarehouseIdAndStatusOrderByDistanceFromEntryMmAsc(
@@ -57,38 +91,6 @@ public class PlacementCandidateService {
                         .comparingInt(this::getStoragePlaceDistanceFromEntry)
                         .thenComparing(StoragePlace::getCode)
                 );
-    }
-
-    private Set<Long> getBlockedStoragePlaceIds(Container sourceContainer) {
-        Long warehouseId = sourceContainer.getWarehouse().getId();
-
-        Set<Long> blockedStoragePlaceIds = new HashSet<>();
-
-        blockedStoragePlaceIds.addAll(
-                recommendationDataService.getSuggestedStoragePlaceIds(warehouseId)
-        );
-
-        blockedStoragePlaceIds.addAll(
-                recommendationDataService.getPreviouslyRecommendedStoragePlaceIds(sourceContainer)
-        );
-
-        return blockedStoragePlaceIds;
-    }
-
-    private Set<Long> getBlockedTargetContainerIds(Container sourceContainer) {
-        Long warehouseId = sourceContainer.getWarehouse().getId();
-
-        Set<Long> blockedTargetContainerIds = new HashSet<>();
-
-        blockedTargetContainerIds.addAll(
-                recommendationDataService.getSuggestedMergeTargetContainerIds(warehouseId)
-        );
-
-        blockedTargetContainerIds.addAll(
-                recommendationDataService.getPreviouslyRecommendedTargetContainerIds(sourceContainer)
-        );
-
-        return blockedTargetContainerIds;
     }
 
     private boolean canTargetContainerFitAfterMerge(
