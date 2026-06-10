@@ -4,6 +4,11 @@ import com.nikitaopara.warehouseoptimizer.optimization.model.OptimizationPlanSta
 import com.nikitaopara.warehouseoptimizer.optimization.model.WarehouseOptimizationPlan;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
 
 import java.util.Collection;
 import java.util.Optional;
@@ -25,6 +30,10 @@ public interface WarehouseOptimizationPlanRepository
             "steps.toStoragePlace"
     })
     Optional<WarehouseOptimizationPlan> findByCode(String code);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select plan from WarehouseOptimizationPlan plan where plan.code = :code")
+    Optional<WarehouseOptimizationPlan> findForUpdateByCode(@Param("code") String code);
 
     boolean existsByWarehouseIdAndStatusIn(
             Long warehouseId,

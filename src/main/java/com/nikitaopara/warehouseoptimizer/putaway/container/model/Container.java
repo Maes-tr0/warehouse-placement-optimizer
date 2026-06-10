@@ -146,6 +146,14 @@ public class Container {
         this.status = ContainerStatus.STORED;
     }
 
+    public void relocateTo(StoragePlace storagePlace) {
+        if (!isStored()) {
+            throw new IllegalStateException("Only stored container can be relocated");
+        }
+
+        this.currentStoragePlace = storagePlace;
+    }
+
     public void markAsMergedInto(Container targetContainer) {
         this.currentStoragePlace = null;
         this.mergedIntoContainer = targetContainer;
