@@ -46,22 +46,25 @@ Implemented:
 * merge-first placement recommendations;
 * placement recommendation approval, rejection, and expiration;
 * demand history import;
+* seasonal and recency-weighted demand scoring;
+* scheduled warehouse optimization assessments;
+* draft optimization plans with merge, move, and buffered swap steps;
+* scan-validated relocation execution;
+* immutable container movement history;
 * Flyway database migrations.
 
 Not implemented yet:
 
 * AI/ML demand prediction;
 * order picking flow;
-* movement history;
 * advanced warehouse layout types;
-* automatic warehouse re-optimization;
 * real UI/browser scanner interface.
 
 ---
 
 ## Technology Stack
 
-* Java 17
+* Java 26
 * Spring Boot
 * Spring Web
 * Spring Security
@@ -782,9 +785,8 @@ Current implementation does not yet support:
 
 * AI/ML demand prediction;
 * order picking optimization;
-* demand-aware placement scoring;
-* movement history;
-* automatic warehouse re-optimization;
+* learning from measured picking duration;
+* obstacle-aware graph routing between storage places;
 * multiple containers in one storage place;
 * mixed articles in one storage place;
 * multiple warehouse layout strategies;
@@ -794,18 +796,39 @@ Current implementation does not yet support:
 
 ---
 
-## Planned Next Step
+## Warehouse Optimization Workflow
 
-The next planned development stage is demand analytics and demand-aware placement scoring.
+The current optimization implementation is an explainable statistical baseline.
+It uses order recency, yearly season proximity, article demand, warehouse distance,
+container dimensions, and configured handling speed. It is not yet a trained ML model.
 
-Expected recommendation logic:
+Default thresholds:
 
-1. Check if the container can be merged into an existing stored container with the same article.
-2. If merge is possible, recommend merge.
-3. If merge is not possible, find available storage places where the container fits.
-4. Score storage places by distance and future demand factors.
-5. Return the best recommended action.
+* below `60%`: optimization is recommended;
+* `85%` or higher: relocation planning stops;
+* the thresholds are configurable through environment variables.
 
-Initial implementation will be rule-based.
+Workflow:
 
-Future implementation will include AI/ML-based demand prediction.
+1. The scheduled analyzer evaluates active warehouses every day at `02:00`.
+2. An administrator creates a draft plan from an assessment below the threshold.
+3. The planner first consolidates compatible partial pallets.
+4. It then creates direct moves or three-step swaps through an available buffer place.
+5. An administrator approves the plan.
+6. An operator scans the expected source container and target place or merge container.
+7. Each completed step updates inventory and appends an immutable movement record.
+
+Main endpoints:
+
+```text
+POST /admin/warehouses/{warehouseId}/optimization-assessments
+GET  /admin/warehouses/{warehouseId}/optimization-assessments/latest
+POST /admin/optimization-plans/assessments/{assessmentId}
+POST /admin/optimization-plans/{planCode}/approve
+GET  /operator/optimization-plans/{planCode}/steps/current
+POST /operator/optimization-plans/{planCode}/steps/current/complete
+GET  /admin/container-movements?warehouseId={warehouseId}
+```
+
+The next modeling stage is to record real picking operations and use measured route
+duration to train and validate demand and travel-time models.
