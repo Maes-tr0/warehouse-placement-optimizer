@@ -23,4 +23,5 @@ public class DemandForecastProperties {
     private int minimumRetrainingIntervalDays = 30;
     private int maximumRetrainingIntervalDays = 90;
     private int newObservationsThreshold = 200;
+    private String trainingZone = "Europe/Amsterdam";
 }

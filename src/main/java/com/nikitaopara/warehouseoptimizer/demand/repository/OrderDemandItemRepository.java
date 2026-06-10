@@ -27,4 +27,9 @@ public interface OrderDemandItemRepository extends JpaRepository<OrderDemandItem
             LocalDateTime from,
             LocalDateTime to
     );
+
+    long countByWarehouseIdAndOrderDemandOrderDateTimeAfter(
+            Long warehouseId,
+            LocalDateTime after
+    );
 }
