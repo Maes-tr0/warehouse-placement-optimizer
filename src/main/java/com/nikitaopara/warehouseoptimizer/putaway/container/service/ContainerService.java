@@ -2,6 +2,9 @@ package com.nikitaopara.warehouseoptimizer.putaway.container.service;
 
 import com.nikitaopara.warehouseoptimizer.account.model.User;
 import com.nikitaopara.warehouseoptimizer.auth.service.AuthenticatedUserService;
+import com.nikitaopara.warehouseoptimizer.putaway.article.dto.ArticleResponse;
+import com.nikitaopara.warehouseoptimizer.putaway.article.dto.CreateArticlesBatchRequest;
+import com.nikitaopara.warehouseoptimizer.putaway.article.dto.CreateArticlesBatchResponse;
 import com.nikitaopara.warehouseoptimizer.putaway.article.model.Article;
 import com.nikitaopara.warehouseoptimizer.putaway.article.service.ArticleDataService;
 import com.nikitaopara.warehouseoptimizer.putaway.container.dto.*;
@@ -16,6 +19,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor

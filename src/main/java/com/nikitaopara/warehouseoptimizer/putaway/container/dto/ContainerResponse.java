@@ -1,8 +1,8 @@
 package com.nikitaopara.warehouseoptimizer.putaway.container.dto;
 
-import com.nikitaopara.warehouseoptimizer.putaway.article.model.UnitType;
 import com.nikitaopara.warehouseoptimizer.putaway.container.model.Container;
 import com.nikitaopara.warehouseoptimizer.putaway.container.model.ContainerStatus;
+import com.nikitaopara.warehouseoptimizer.putaway.article.model.UnitType;
 import com.nikitaopara.warehouseoptimizer.warehouse.model.StoragePlace;
 
 import java.math.BigDecimal;
