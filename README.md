@@ -909,3 +909,38 @@ GET http://localhost:8080/admin/warehouses/1/demand-forecast-models
 
 Manual training returns `400 Bad Request` when there are fewer than the configured
 training or validation samples. Import more historical orders before retrying.
+
+### Full Postman AI Cycle
+
+Import these files into Postman:
+
+```text
+postman/warehouse-optimization-ai-cycle.postman_collection.json
+postman/warehouse-optimization-ai-local.postman_environment.json
+```
+
+Set the correct root administrator credentials in the imported environment. Start the
+application with the local Postman profile:
+
+```bash
+SPRING_PROFILES_ACTIVE=postman ./mvnw spring-boot:run
+```
+
+The profile checks warehouse optimization every 10 seconds and demand model training
+every 15 seconds. These fast schedules are test-only and do not change the default
+production schedule.
+
+Run the entire collection through Postman Collection Runner, not by sending only one
+request. Runner is required because the collection loops through all container
+placements and every relocation step automatically.
+
+The full cycle creates:
+
+* a warehouse with 576 storage places;
+* 12 articles and 16 physical containers;
+* 540 days, 540 orders, and 6480 order items;
+* a trained Tribuo model with validation metrics;
+* an intentionally inefficient initial placement;
+* an optimization assessment and relocation plan;
+* scan-compatible execution of all relocation steps;
+* a final assessment and immutable movement audit history.
