@@ -13,7 +13,10 @@ target/
 .springBeans
 .sts4-cache
 .postman
-postman
+postman/*
+!postman/README.md
+!postman/local.postman_environment.json
+!postman/warehouse-placement-optimizer.postman_collection.json
 
 ### IntelliJ IDEA ###
 .idea
