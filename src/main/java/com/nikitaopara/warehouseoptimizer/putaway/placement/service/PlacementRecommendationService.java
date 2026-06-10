@@ -37,6 +37,8 @@ public class PlacementRecommendationService {
 
         Container sourceContainer = getValidatedSourceContainer(actor, request);
 
+        dataService.expireSuggestedRecommendations();
+
         return dataService.findSuggestedRecommendationBySourceContainer(sourceContainer)
                 .map(this::reuseSuggestedRecommendation)
                 .orElseGet(() -> createAndSaveNewRecommendation(sourceContainer));
@@ -50,6 +52,8 @@ public class PlacementRecommendationService {
         User actor = authenticatedUserService.getCurrentUser();
 
         validationService.validateApproveRecommendationRequest(actor, recommendationCode, request);
+
+        dataService.expireSuggestedRecommendations();
 
         PlacementRecommendation recommendation = dataService.getByCodeOrThrow(recommendationCode);
 
@@ -68,6 +72,8 @@ public class PlacementRecommendationService {
         User actor = authenticatedUserService.getCurrentUser();
 
         validationService.validateRejectRecommendationRequest(actor, recommendationCode);
+
+        dataService.expireSuggestedRecommendations();
 
         PlacementRecommendation recommendation = dataService.getByCodeOrThrow(recommendationCode);
 

@@ -117,6 +117,10 @@ public class PlacementRecommendationValidationService {
         }
 
         if (!recommendation.isSuggested()) {
+            if (recommendation.isExpired()) {
+                throw new IllegalArgumentException("Placement recommendation has expired");
+            }
+
             throw new IllegalArgumentException("Only suggested recommendation can be reused");
         }
 
@@ -135,6 +139,10 @@ public class PlacementRecommendationValidationService {
         }
 
         if (!recommendation.isSuggested()) {
+            if (recommendation.isExpired()) {
+                throw new IllegalArgumentException("Placement recommendation has expired");
+            }
+
             throw new IllegalArgumentException("Only suggested recommendation can be rejected");
         }
     }
@@ -145,6 +153,10 @@ public class PlacementRecommendationValidationService {
         }
 
         if (!recommendation.isSuggested()) {
+            if (recommendation.isExpired()) {
+                throw new IllegalArgumentException("Placement recommendation has expired");
+            }
+
             throw new IllegalArgumentException("Only suggested recommendation can be accepted");
         }
 
@@ -203,6 +215,13 @@ public class PlacementRecommendationValidationService {
 
         if (!targetContainer.canAcceptQuantity(sourceContainer.getQuantity())) {
             throw new IllegalArgumentException("Target container does not have enough quantity capacity");
+        }
+
+        if (targetContainer.getCurrentStoragePlace() == null
+                || !targetContainer.getCurrentStoragePlace().getId().equals(
+                recommendation.getRecommendedStoragePlace().getId()
+        )) {
+            throw new IllegalArgumentException("Merge target container has moved to another storage place");
         }
     }
 

@@ -43,11 +43,13 @@ Implemented:
 * container merging;
 * container removal;
 * storage place status updates;
+* merge-first placement recommendations;
+* placement recommendation approval, rejection, and expiration;
+* demand history import;
 * Flyway database migrations.
 
 Not implemented yet:
 
-* automatic placement recommendation;
 * AI/ML demand prediction;
 * order picking flow;
 * movement history;
@@ -658,6 +660,9 @@ Current Flyway migrations:
 V1__create_users_table.sql
 V2__create_warehouse_layout_tables.sql
 V3__create_putaway_tables.sql
+V4__create_placement_recommendations_table.sql
+V5__create_demand_history_tables.sql
+V6__add_placement_recommendation_expiration.sql
 ```
 
 ### V1
@@ -682,11 +687,38 @@ Creates putaway tables:
 * `articles`
 * `containers`
 
+### V4
+
+Creates placement recommendation storage.
+
+### V5
+
+Creates demand history tables:
+
+* `order_demands`
+* `order_demand_items`
+
+### V6
+
+Adds recommendation expiration and active reservation constraints.
+
 ---
 
 ## Local Development Notes
 
 The project uses Flyway for database schema management.
+
+Before starting with a new database, configure the initial root administrator:
+
+```bash
+export APP_ADMIN_EMAIL=admin@example.com
+export APP_ADMIN_PASSWORD='replace-with-a-strong-password'
+export APP_ADMIN_FULL_NAME='System Admin'
+```
+
+`APP_ADMIN_EMAIL` and `APP_ADMIN_PASSWORD` are required only while the database
+does not contain a `ROOT_ADMIN`. Placement recommendations expire after 15 minutes
+by default. Override this with `PLACEMENT_RECOMMENDATION_TTL_MINUTES`.
 
 For local testing, do not manually delete `flyway_schema_history`.
 
@@ -748,10 +780,9 @@ Current tested flow:
 
 Current implementation does not yet support:
 
-* automatic placement recommendation;
 * AI/ML demand prediction;
 * order picking optimization;
-* order history;
+* demand-aware placement scoring;
 * movement history;
 * automatic warehouse re-optimization;
 * multiple containers in one storage place;
@@ -765,7 +796,7 @@ Current implementation does not yet support:
 
 ## Planned Next Step
 
-The next planned development stage is placement recommendation.
+The next planned development stage is demand analytics and demand-aware placement scoring.
 
 Expected recommendation logic:
 

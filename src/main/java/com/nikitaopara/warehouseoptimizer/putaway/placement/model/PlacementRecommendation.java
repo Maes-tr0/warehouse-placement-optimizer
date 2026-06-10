@@ -95,6 +95,9 @@ public class PlacementRecommendation {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(name = "expires_at", nullable = false)
+    private LocalDateTime expiresAt;
+
     @PrePersist
     protected void onCreate() {
         LocalDateTime now = LocalDateTime.now();
@@ -132,12 +135,24 @@ public class PlacementRecommendation {
         return status == PlacementRecommendationStatus.REJECTED;
     }
 
+    public boolean isExpired() {
+        return status == PlacementRecommendationStatus.EXPIRED;
+    }
+
+    public boolean isExpiredAt(LocalDateTime time) {
+        return expiresAt != null && !expiresAt.isAfter(time);
+    }
+
     public void accept() {
         this.status = PlacementRecommendationStatus.ACCEPTED;
     }
 
     public void reject() {
         this.status = PlacementRecommendationStatus.REJECTED;
+    }
+
+    public void expire() {
+        this.status = PlacementRecommendationStatus.EXPIRED;
     }
 
     private String getWarehouseCode() {
@@ -186,6 +201,7 @@ public class PlacementRecommendation {
                 ", distanceFromEntryMm=" + distanceFromEntryMm +
                 ", estimatedTimeSeconds=" + estimatedTimeSeconds +
                 ", score=" + score +
+                ", expiresAt=" + expiresAt +
                 ", version=" + version +
                 '}';
     }

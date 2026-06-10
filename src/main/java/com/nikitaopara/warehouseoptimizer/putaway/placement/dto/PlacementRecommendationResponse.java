@@ -28,7 +28,8 @@ public record PlacementRecommendationResponse(
         String reason,
 
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        LocalDateTime expiresAt
 ) {
 
     public static PlacementRecommendationResponse from(PlacementRecommendation recommendation) {
@@ -64,7 +65,8 @@ public record PlacementRecommendationResponse(
                 recommendation.getReason(),
 
                 recommendation.getCreatedAt(),
-                recommendation.getUpdatedAt()
+                recommendation.getUpdatedAt(),
+                recommendation.getExpiresAt()
         );
     }
 }
