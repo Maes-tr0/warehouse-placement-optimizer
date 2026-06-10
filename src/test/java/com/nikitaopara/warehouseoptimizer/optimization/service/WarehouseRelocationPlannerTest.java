@@ -107,6 +107,26 @@ class WarehouseRelocationPlannerTest {
         assertThat(draft.steps().getFirst().targetContainerId()).isEqualTo(second.getId());
     }
 
+    @Test
+    void doesNotMoveConsolidatedPalletIntoPlaceThatOnlyFitsOriginalWeight() {
+        Article article = article(1L, "PARTIAL");
+        StoragePlace smallNear = place(9L, "SMALL", 1_000, StoragePlaceStatus.AVAILABLE);
+        smallNear.setMaxWeightKg(40);
+        StoragePlace targetPlace = place(10L, "TARGET", 9_000, StoragePlaceStatus.OCCUPIED);
+        StoragePlace sourcePlace = place(11L, "SOURCE", 10_000, StoragePlaceStatus.OCCUPIED);
+        Container target = container(20L, "C-TARGET", article, 30, targetPlace);
+        Container source = container(21L, "C-SOURCE", article, 20, sourcePlace);
+
+        var draft = planner.createPlan(
+                List.of(source, target),
+                List.of(smallNear, targetPlace, sourcePlace),
+                Map.of(article.getId(), new ArticleDemandScore(article.getId(), 50, 50, 10))
+        );
+
+        assertThat(draft.steps()).hasSize(1);
+        assertThat(draft.steps().getFirst().type()).isEqualTo(RelocationStepType.MERGE);
+    }
+
     private Article article(Long id, String number) {
         return Article.builder()
                 .id(id)

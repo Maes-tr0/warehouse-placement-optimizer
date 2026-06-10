@@ -130,7 +130,9 @@ public class WarehouseRelocationPlanner {
                     container,
                     container.getQuantity(),
                     container.getCurrentStoragePlace(),
-                    demandWeight
+                    demandWeight,
+                    container.getWeightKg(),
+                    container.getHeightMm()
             ));
         }
 
@@ -185,6 +187,16 @@ public class WarehouseRelocationPlanner {
                 ));
 
                 target.add(source.quantity(), source.demandWeight());
+                target.updateDimensions(
+                        dimensionCalculationService.calculateWeightKg(
+                                target.entity().getArticle(),
+                                target.quantity()
+                        ),
+                        dimensionCalculationService.calculateHeightMm(
+                                target.entity().getArticle(),
+                                target.quantity()
+                        )
+                );
                 availablePlaceIds.add(source.place().getId());
                 containers.remove(source.entity().getId());
                 totalSaving += saving;
@@ -358,10 +370,10 @@ public class WarehouseRelocationPlanner {
 
     private boolean canFit(VirtualContainer container, StoragePlace place) {
         return place != null
-                && container.entity().getWeightKg().compareTo(
+                && container.weightKg().compareTo(
                         BigDecimal.valueOf(place.getMaxWeightKg())
                 ) <= 0
-                && container.entity().getHeightMm() <= place.getMaxHeightMm();
+                && container.heightMm() <= place.getMaxHeightMm();
     }
 
     private long calculateMoveSaving(
@@ -424,17 +436,23 @@ public class WarehouseRelocationPlanner {
         private int quantity;
         private StoragePlace place;
         private double demandWeight;
+        private BigDecimal weightKg;
+        private int heightMm;
 
         private VirtualContainer(
                 Container entity,
                 int quantity,
                 StoragePlace place,
-                double demandWeight
+                double demandWeight,
+                BigDecimal weightKg,
+                int heightMm
         ) {
             this.entity = entity;
             this.quantity = quantity;
             this.place = place;
             this.demandWeight = demandWeight;
+            this.weightKg = weightKg;
+            this.heightMm = heightMm;
         }
 
         private Container entity() {
@@ -453,6 +471,14 @@ public class WarehouseRelocationPlanner {
             return demandWeight;
         }
 
+        private BigDecimal weightKg() {
+            return weightKg;
+        }
+
+        private int heightMm() {
+            return heightMm;
+        }
+
         private void add(int additionalQuantity, double additionalDemandWeight) {
             quantity += additionalQuantity;
             demandWeight += additionalDemandWeight;
@@ -460,6 +486,11 @@ public class WarehouseRelocationPlanner {
 
         private void moveTo(StoragePlace target) {
             place = target;
+        }
+
+        private void updateDimensions(BigDecimal newWeightKg, int newHeightMm) {
+            weightKg = newWeightKg;
+            heightMm = newHeightMm;
         }
     }
 
