@@ -1,0 +1,593 @@
+{
+  "info": {
+    "_postman_id": "ade39a3d-9f85-4554-9363-52633fa5a98c",
+    "name": "Warehouse Optimization AI - Full Cycle",
+    "description": "Run this collection with Collection Runner. It creates a large warehouse, 12 articles, 16 placed containers, 540 days of deterministic order history, trains the Tribuo demand model, creates and executes a relocation plan, and compares warehouse efficiency before and after optimization.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "basic",
+    "basic": [
+      {
+        "key": "username",
+        "value": "{{username}}",
+        "type": "string"
+      },
+      {
+        "key": "password",
+        "value": "{{password}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.collectionVariables.get('runId')) {",
+          "  const runId = Date.now().toString();",
+          "  pm.collectionVariables.set('runId', runId);",
+          "  pm.collectionVariables.set('warehouseCode', 'ML-' + runId);",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "runId",
+      "value": ""
+    },
+    {
+      "key": "warehouseCode",
+      "value": ""
+    },
+    {
+      "key": "warehouseId",
+      "value": ""
+    },
+    {
+      "key": "assessmentId",
+      "value": ""
+    },
+    {
+      "key": "planCode",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Create large warehouse",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"warehouseCode\": \"{{warehouseCode}}\",\n  \"warehouseName\": \"AI Optimization Test {{runId}}\",\n  \"layoutType\": \"MAIN_CORRIDOR_ONE_SIDE_AISLES\",\n  \"aisleCount\": 4,\n  \"rackRowCount\": 8,\n  \"baysPerRackRow\": 8,\n  \"palletPlacesPerLevel\": 3,\n  \"aisleWidthMm\": 3500,\n  \"levelProfiles\": [\n    {\"levelNumber\": 1, \"clearHeightMm\": 1800, \"maxCellLoadKg\": 1000},\n    {\"levelNumber\": 2, \"clearHeightMm\": 1600, \"maxCellLoadKg\": 900},\n    {\"levelNumber\": 3, \"clearHeightMm\": 1400, \"maxCellLoadKg\": 800}\n  ],\n  \"maxBayLoadKg\": 9000\n}"
+        },
+        "url": "{{baseUrl}}/admin/warehouses"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const runId = Date.now().toString();",
+              "pm.collectionVariables.set('runId', runId);",
+              "pm.collectionVariables.set('warehouseCode', 'ML-' + runId);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Warehouse created', () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set('warehouseId', body.id);",
+              "pm.test('Large layout generated', () => pm.expect(body.generatedStoragePlaceCount).to.eql(576));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Create 12 articles",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const runId = pm.collectionVariables.get('runId');",
+              "const articles = Array.from({length: 12}, (_, index) => ({",
+              "  articleNumber: `SKU-${runId}-${String(index + 1).padStart(3, '0')}` ,",
+              "  name: `AI Test Article ${index + 1}` ,",
+              "  unitType: index % 3 === 0 ? 'BOX' : 'PCS',",
+              "  unitWidthMm: 200,",
+              "  unitLengthMm: 300,",
+              "  unitHeightMm: 180 + (index % 3) * 20,",
+              "  unitWeightKg: 2 + index * 0.1,",
+              "  maxQuantityPerPallet: 100",
+              "}));",
+              "pm.collectionVariables.set('articlesBody', JSON.stringify({articles}));",
+              "pm.collectionVariables.set('articleNumbers', JSON.stringify(articles.map(article => article.articleNumber)));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Articles created', () => pm.response.to.have.status(200));",
+              "pm.test('All 12 articles created', () => pm.expect(pm.response.json().createdArticles).to.eql(12));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{{articlesBody}}"
+        },
+        "url": "{{baseUrl}}/admin/articles/batch"
+      }
+    },
+    {
+      "name": "03 - Receive 16 containers",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const runId = pm.collectionVariables.get('runId');",
+              "const warehouseId = Number(pm.collectionVariables.get('warehouseId'));",
+              "const articles = JSON.parse(pm.collectionVariables.get('articleNumbers'));",
+              "const specs = [",
+              "  [0, 40, 'AH123'], [1, 40, 'AH122'], [2, 40, 'AH121'], [3, 40, 'AG123'],",
+              "  [4, 20, 'AA100'], [4, 25, 'AA101'], [5, 40, 'AA102'], [6, 40, 'AA103'],",
+              "  [7, 40, 'AA104'], [8, 40, 'AB100'], [9, 40, 'AB101'], [10, 40, 'AB102'],",
+              "  [11, 40, 'AB103'], [0, 30, 'AH120'], [1, 30, 'AG122'], [8, 20, 'AA105']",
+              "];",
+              "const containers = specs.map((spec, index) => ({",
+              "  warehouseId,",
+              "  containerNumber: `MLC-${runId}-${String(index + 1).padStart(3, '0')}` ,",
+              "  articleNumber: articles[spec[0]],",
+              "  quantity: spec[1],",
+              "  weightKg: spec[1] * (2 + spec[0] * 0.1),",
+              "  heightMm: 1000",
+              "}));",
+              "const placements = specs.map((spec, index) => ({",
+              "  containerNumber: containers[index].containerNumber,",
+              "  storagePlaceCode: spec[2]",
+              "}));",
+              "pm.collectionVariables.set('containersBody', JSON.stringify({containers}));",
+              "pm.collectionVariables.set('placements', JSON.stringify(placements));",
+              "pm.collectionVariables.set('placementIndex', '0');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Containers received', () => pm.response.to.have.status(200));",
+              "pm.test('All 16 containers received', () => pm.expect(pm.response.json().receivedContainers).to.eql(16));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{{containersBody}}"
+        },
+        "url": "{{baseUrl}}/operator/containers/receive/batch"
+      }
+    },
+    {
+      "name": "04 - Place containers",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const placements = JSON.parse(pm.collectionVariables.get('placements'));",
+              "const index = Number(pm.collectionVariables.get('placementIndex') || 0);",
+              "const placement = placements[index];",
+              "pm.collectionVariables.set('containerNumber', placement.containerNumber);",
+              "pm.collectionVariables.set('storagePlaceCode', placement.storagePlaceCode);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Container placed', () => pm.response.to.have.status(200));",
+              "const placements = JSON.parse(pm.collectionVariables.get('placements'));",
+              "const nextIndex = Number(pm.collectionVariables.get('placementIndex')) + 1;",
+              "if (nextIndex < placements.length) {",
+              "  pm.collectionVariables.set('placementIndex', String(nextIndex));",
+              "  pm.execution.setNextRequest('04 - Place containers');",
+              "} else {",
+              "  pm.collectionVariables.unset('placementIndex');",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"storagePlaceCode\":\"{{storagePlaceCode}}\"}"
+        },
+        "url": "{{baseUrl}}/operator/containers/{{containerNumber}}/place"
+      }
+    },
+    {
+      "name": "05 - Import 540 days of demand history",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const runId = pm.collectionVariables.get('runId');",
+              "const warehouseId = Number(pm.collectionVariables.get('warehouseId'));",
+              "const articles = JSON.parse(pm.collectionVariables.get('articleNumbers'));",
+              "const bases = [28, 24, 21, 18, 10, 9, 8, 7, 3, 3, 2, 2];",
+              "const end = new Date();",
+              "end.setUTCHours(12, 0, 0, 0);",
+              "end.setUTCDate(end.getUTCDate() - 1);",
+              "const orders = [];",
+              "for (let day = 0; day < 540; day++) {",
+              "  const date = new Date(end);",
+              "  date.setUTCDate(end.getUTCDate() - (539 - day));",
+              "  const fourteenDayPhase = Math.floor(day / 14) % 2;",
+              "  const phaseMultiplier = fourteenDayPhase === 0 ? 0.45 : 2.6;",
+              "  const weekdayMultiplier = [0.65, 1.25, 1.15, 1.05, 1.3, 0.9, 0.55][date.getUTCDay()];",
+              "  const trendMultiplier = 0.8 + day / 900;",
+              "  const items = articles.map((articleNumber, index) => ({",
+              "    articleNumber,",
+              "    quantity: Math.max(1, Math.round(bases[index] * phaseMultiplier * weekdayMultiplier * trendMultiplier))",
+              "  }));",
+              "  orders.push({",
+              "    orderNumber: `ML-ORDER-${runId}-${String(day + 1).padStart(4, '0')}` ,",
+              "    orderDateTime: date.toISOString().slice(0, 19),",
+              "    items",
+              "  });",
+              "}",
+              "pm.collectionVariables.set('demandHistoryBody', JSON.stringify({warehouseId, orders}));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Demand history imported', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('540 orders imported', () => pm.expect(body.importedOrders).to.eql(540));",
+              "pm.test('6480 order items imported', () => pm.expect(body.importedItems).to.eql(6480));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{{demandHistoryBody}}"
+        },
+        "url": "{{baseUrl}}/admin/demand-history/import"
+      }
+    },
+    {
+      "name": "06 - Train Tribuo demand model",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/admin/warehouses/{{warehouseId}}/demand-forecast-models/train"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Training completed', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set('modelCode', body.code);",
+              "pm.test('Training has metrics', () => {",
+              "  pm.expect(body.modelMae).to.be.a('number');",
+              "  pm.expect(body.baselineMae).to.be.a('number');",
+              "});",
+              "console.log('Model status:', body.status, 'MAE:', body.modelMae, 'baseline:', body.baselineMae, 'improvement %:', body.improvementPercent);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Get model versions",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/admin/warehouses/{{warehouseId}}/demand-forecast-models"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Model history returned', () => pm.response.to.have.status(200));",
+              "pm.test('At least one model version exists', () => pm.expect(pm.response.json().length).to.be.above(0));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 - Analyze warehouse before optimization",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/admin/warehouses/{{warehouseId}}/optimization-assessments"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Warehouse analyzed', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set('assessmentId', body.id);",
+              "pm.collectionVariables.set('scoreBefore', String(body.scorePercent));",
+              "pm.test('Optimization recommended', () => pm.expect(body.optimizationRecommended).to.eql(true));",
+              "console.log('Warehouse score before optimization:', body.scorePercent);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 - Create relocation plan",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/admin/optimization-plans/assessments/{{assessmentId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Relocation plan created', () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set('planCode', body.code);",
+              "pm.test('Plan contains relocation steps', () => pm.expect(body.totalSteps).to.be.above(0));",
+              "console.log('Plan:', body.code, 'steps:', body.totalSteps, 'projected score:', body.projectedScorePercent);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 - Approve relocation plan",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/admin/optimization-plans/{{planCode}}/approve"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Plan approved', () => pm.response.to.have.status(200));",
+              "pm.test('Plan status is APPROVED', () => pm.expect(pm.response.json().status).to.eql('APPROVED'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 - Get current relocation step",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/operator/optimization-plans/{{planCode}}/steps/current"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Current step returned', () => pm.response.to.have.status(200));",
+              "pm.collectionVariables.set('currentStep', JSON.stringify(pm.response.json()));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12 - Complete current relocation step",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const step = JSON.parse(pm.collectionVariables.get('currentStep'));",
+              "const request = {",
+              "  sourceContainerNumber: step.sourceContainerNumber,",
+              "  targetStoragePlaceCode: step.type === 'MERGE' ? null : step.toStoragePlaceCode,",
+              "  targetContainerNumber: step.type === 'MERGE' ? step.targetContainerNumber : null",
+              "};",
+              "pm.collectionVariables.set('completeStepBody', JSON.stringify(request));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Relocation step completed', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "console.log('Completed step', body.completedStep.sequenceNumber, body.completedStep.type);",
+              "if (body.nextStep) {",
+              "  pm.collectionVariables.set('currentStep', JSON.stringify(body.nextStep));",
+              "  pm.execution.setNextRequest('12 - Complete current relocation step');",
+              "} else {",
+              "  pm.collectionVariables.unset('currentStep');",
+              "  pm.test('Plan completed', () => pm.expect(body.planStatus).to.eql('COMPLETED'));",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{{completeStepBody}}"
+        },
+        "url": "{{baseUrl}}/operator/optimization-plans/{{planCode}}/steps/current/complete"
+      }
+    },
+    {
+      "name": "13 - Get completed plan",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/admin/optimization-plans/{{planCode}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Completed plan returned', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test('Every planned step completed', () => {",
+              "  pm.expect(body.status).to.eql('COMPLETED');",
+              "  pm.expect(body.completedSteps).to.eql(body.totalSteps);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "14 - Analyze warehouse after optimization",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/admin/warehouses/{{warehouseId}}/optimization-assessments"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Warehouse re-analyzed', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "const before = Number(pm.collectionVariables.get('scoreBefore'));",
+              "console.log('Warehouse score before:', before, 'after:', body.scorePercent);",
+              "pm.test('Warehouse score did not decrease', () => pm.expect(Number(body.scorePercent)).to.be.at.least(before));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "15 - Get movement audit history",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/admin/container-movements?warehouseId={{warehouseId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Movement history returned', () => pm.response.to.have.status(200));",
+              "const movements = pm.response.json();",
+              "pm.test('Optimization movements recorded', () => pm.expect(movements.some(item => item.optimizationPlanCode === pm.collectionVariables.get('planCode'))).to.eql(true));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "16 - Latest scheduled assessment",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/admin/warehouses/{{warehouseId}}/optimization-assessments/latest",
+        "description": "With the postman Spring profile enabled, repeat this request after 10 seconds to observe a new SCHEDULED assessment."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Latest assessment returned', () => pm.response.to.have.status(200));",
+              "console.log('Latest assessment trigger:', pm.response.json().trigger, 'analyzedAt:', pm.response.json().analyzedAt);"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
