@@ -18,5 +18,9 @@ public interface DemandForecastModelRepository extends JpaRepository<DemandForec
 
     Optional<DemandForecastModel> findFirstByWarehouseIdOrderByVersionNumberDesc(Long warehouseId);
 
+    @EntityGraph(attributePaths = "warehouse")
+    Optional<DemandForecastModel> findByCode(String code);
+
+    @EntityGraph(attributePaths = "warehouse")
     List<DemandForecastModel> findByWarehouseIdOrderByVersionNumberDesc(Long warehouseId);
 }
