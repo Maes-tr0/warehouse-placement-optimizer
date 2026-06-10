@@ -18,4 +18,7 @@ public class OptimizationProperties {
     private int recencyHalfLifeDays = 365;
     private int seasonalWindowDays = 45;
     private int minimumDemandObservations = 30;
+    private BigDecimal targetPercent = new BigDecimal("85.00");
+    private int maximumPlanSteps = 30;
+    private long minimumTimeSavingSeconds = 1;
 }
