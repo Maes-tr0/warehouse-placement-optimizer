@@ -80,6 +80,11 @@
             <groupId>org.thymeleaf.extras</groupId>
             <artifactId>thymeleaf-extras-springsecurity6</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.tribuo</groupId>
+            <artifactId>tribuo-regression-tree</artifactId>
+            <version>4.3.2</version>
+        </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
