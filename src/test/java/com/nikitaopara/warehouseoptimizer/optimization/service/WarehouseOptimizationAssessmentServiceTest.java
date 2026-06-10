@@ -3,7 +3,9 @@ package com.nikitaopara.warehouseoptimizer.optimization.service;
 import com.nikitaopara.warehouseoptimizer.demand.model.OrderDemand;
 import com.nikitaopara.warehouseoptimizer.demand.model.OrderDemandItem;
 import com.nikitaopara.warehouseoptimizer.demand.repository.OrderDemandItemRepository;
+import com.nikitaopara.warehouseoptimizer.demand.forecast.service.DemandForecastScoringService;
 import com.nikitaopara.warehouseoptimizer.optimization.config.OptimizationProperties;
+import com.nikitaopara.warehouseoptimizer.optimization.model.ArticleDemandScore;
 import com.nikitaopara.warehouseoptimizer.optimization.model.OptimizationAssessmentStatus;
 import com.nikitaopara.warehouseoptimizer.optimization.model.OptimizationAssessmentTrigger;
 import com.nikitaopara.warehouseoptimizer.optimization.repository.WarehouseOptimizationAssessmentRepository;
@@ -47,6 +49,9 @@ class WarehouseOptimizationAssessmentServiceTest {
     @Mock
     private WarehouseOptimizationAssessmentRepository assessmentRepository;
 
+    @Mock
+    private DemandForecastScoringService demandForecastScoringService;
+
     private WarehouseOptimizationAssessmentService assessmentService;
 
     @BeforeEach
@@ -60,7 +65,7 @@ class WarehouseOptimizationAssessmentServiceTest {
                 containerRepository,
                 storagePlaceRepository,
                 assessmentRepository,
-                new SeasonalDemandModel(),
+                demandForecastScoringService,
                 new WarehouseEfficiencyCalculator(),
                 properties
         );
@@ -115,6 +120,12 @@ class WarehouseOptimizationAssessmentServiceTest {
         when(storagePlaceRepository.findByWarehouseIdOrderByDistanceFromEntryMmAsc(warehouse.getId()))
                 .thenReturn(List.of(nearPlace, farPlace));
         when(assessmentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(demandForecastScoringService.calculate(any(), any(), any())).thenReturn(
+                java.util.Map.of(
+                        article.getId(),
+                        new ArticleDemandScore(article.getId(), 20.0, 20, 1)
+                )
+        );
 
         var response = assessmentService.analyzeWarehouse(
                 warehouse.getId(),

@@ -4,6 +4,7 @@ import com.nikitaopara.warehouseoptimizer.account.model.Role;
 import com.nikitaopara.warehouseoptimizer.account.model.User;
 import com.nikitaopara.warehouseoptimizer.auth.service.AuthenticatedUserService;
 import com.nikitaopara.warehouseoptimizer.common.error.ResourceNotFoundException;
+import com.nikitaopara.warehouseoptimizer.demand.forecast.service.DemandForecastScoringService;
 import com.nikitaopara.warehouseoptimizer.demand.model.OrderDemandItem;
 import com.nikitaopara.warehouseoptimizer.demand.repository.OrderDemandItemRepository;
 import com.nikitaopara.warehouseoptimizer.optimization.config.OptimizationProperties;
@@ -42,7 +43,7 @@ public class WarehouseOptimizationPlanService {
     private final OrderDemandItemRepository orderDemandItemRepository;
     private final ContainerRepository containerRepository;
     private final StoragePlaceRepository storagePlaceRepository;
-    private final SeasonalDemandModel seasonalDemandModel;
+    private final DemandForecastScoringService demandForecastScoringService;
     private final WarehouseRelocationPlanner relocationPlanner;
     private final OptimizationProperties properties;
 
@@ -78,11 +79,10 @@ public class WarehouseOptimizationPlanService {
         );
         List<StoragePlace> places = storagePlaceRepository
                 .findByWarehouseIdOrderByDistanceFromEntryMmAsc(warehouseId);
-        Map<Long, ArticleDemandScore> demandByArticle = seasonalDemandModel.calculate(
+        Map<Long, ArticleDemandScore> demandByArticle = demandForecastScoringService.calculate(
+                warehouseId,
                 demandItems.stream().map(this::toDemandObservation).toList(),
-                assessment.getAnalyzedAt().toLocalDate(),
-                properties.getRecencyHalfLifeDays(),
-                properties.getSeasonalWindowDays()
+                assessment.getAnalyzedAt().toLocalDate()
         );
         RelocationPlanDraft draft = relocationPlanner.createPlan(
                 containers,

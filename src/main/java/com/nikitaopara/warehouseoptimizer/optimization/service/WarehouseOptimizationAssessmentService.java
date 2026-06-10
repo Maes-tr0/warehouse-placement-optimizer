@@ -1,6 +1,7 @@
 package com.nikitaopara.warehouseoptimizer.optimization.service;
 
 import com.nikitaopara.warehouseoptimizer.common.error.ResourceNotFoundException;
+import com.nikitaopara.warehouseoptimizer.demand.forecast.service.DemandForecastScoringService;
 import com.nikitaopara.warehouseoptimizer.demand.model.OrderDemandItem;
 import com.nikitaopara.warehouseoptimizer.demand.repository.OrderDemandItemRepository;
 import com.nikitaopara.warehouseoptimizer.optimization.config.OptimizationProperties;
@@ -32,7 +33,7 @@ public class WarehouseOptimizationAssessmentService {
     private final ContainerRepository containerRepository;
     private final StoragePlaceRepository storagePlaceRepository;
     private final WarehouseOptimizationAssessmentRepository assessmentRepository;
-    private final SeasonalDemandModel seasonalDemandModel;
+    private final DemandForecastScoringService demandForecastScoringService;
     private final WarehouseEfficiencyCalculator efficiencyCalculator;
     private final OptimizationProperties properties;
 
@@ -123,11 +124,10 @@ public class WarehouseOptimizationAssessmentService {
             );
         }
 
-        Map<Long, ArticleDemandScore> demandByArticle = seasonalDemandModel.calculate(
+        Map<Long, ArticleDemandScore> demandByArticle = demandForecastScoringService.calculate(
+                warehouse.getId(),
                 observations,
-                analyzedAt.toLocalDate(),
-                properties.getRecencyHalfLifeDays(),
-                properties.getSeasonalWindowDays()
+                analyzedAt.toLocalDate()
         );
 
         int nearestDistance = storagePlaces.stream()
