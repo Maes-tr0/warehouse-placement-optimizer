@@ -2,9 +2,7 @@ package com.nikitaopara.warehouseoptimizer.putaway.article.service;
 
 import com.nikitaopara.warehouseoptimizer.account.model.User;
 import com.nikitaopara.warehouseoptimizer.auth.service.AuthenticatedUserService;
-import com.nikitaopara.warehouseoptimizer.putaway.article.dto.ArticleResponse;
-import com.nikitaopara.warehouseoptimizer.putaway.article.dto.CreateArticleRequest;
-import com.nikitaopara.warehouseoptimizer.putaway.article.dto.UpdateArticleRequest;
+import com.nikitaopara.warehouseoptimizer.putaway.article.dto.*;
 import com.nikitaopara.warehouseoptimizer.putaway.article.model.Article;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,22 +26,36 @@ public class ArticleService {
 
         articleValidationService.validateCreateArticleRequest(actor, request);
 
-        String articleNumber = resolveArticleNumber(request.articleNumber());
-
-        Article article = Article.builder()
-                .articleNumber(articleNumber)
-                .name(request.name().trim())
-                .unitType(request.unitType())
-                .unitWidthMm(request.unitWidthMm())
-                .unitLengthMm(request.unitLengthMm())
-                .unitHeightMm(request.unitHeightMm())
-                .unitWeightKg(request.unitWeightKg())
-                .maxQuantityPerPallet(request.maxQuantityPerPallet())
-                .build();
+        Article article = toArticle(request);
 
         Article savedArticle = articleDataService.save(article);
 
         return ArticleResponse.from(savedArticle);
+    }
+
+    @Transactional
+    public CreateArticlesBatchResponse createArticlesBatch(CreateArticlesBatchRequest request) {
+        User actor = authenticatedUserService.getCurrentUser();
+
+        articleValidationService.validateCreateArticlesBatchRequest(actor, request);
+
+        List<Article> articles = request.articles()
+                .stream()
+                .map(this::toArticle)
+                .toList();
+
+        List<Article> savedArticles = articleDataService.saveOnlyNew(articles);
+
+        List<ArticleResponse> responses = savedArticles
+                .stream()
+                .map(ArticleResponse::from)
+                .toList();
+
+        return new CreateArticlesBatchResponse(
+                request.articles().size(),
+                savedArticles.size(),
+                responses
+        );
     }
 
     @Transactional(readOnly = true)
@@ -92,6 +104,21 @@ public class ArticleService {
         articleValidationService.validateDeleteArticleRequest(actor, article.getId());
 
         articleDataService.delete(article);
+    }
+
+    private Article toArticle(CreateArticleRequest request) {
+        String articleNumber = resolveArticleNumber(request.articleNumber());
+
+        return Article.builder()
+                .articleNumber(articleNumber)
+                .name(request.name().trim())
+                .unitType(request.unitType())
+                .unitWidthMm(request.unitWidthMm())
+                .unitLengthMm(request.unitLengthMm())
+                .unitHeightMm(request.unitHeightMm())
+                .unitWeightKg(request.unitWeightKg())
+                .maxQuantityPerPallet(request.maxQuantityPerPallet())
+                .build();
     }
 
     private String resolveArticleNumber(String articleNumber) {

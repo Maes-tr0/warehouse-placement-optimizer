@@ -7,7 +7,6 @@ import com.nikitaopara.warehouseoptimizer.demand.model.OrderDemandItem;
 import com.nikitaopara.warehouseoptimizer.putaway.article.model.Article;
 import com.nikitaopara.warehouseoptimizer.warehouse.model.Warehouse;
 import org.springframework.stereotype.Component;
-import org.springframework.stereotype.Service;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

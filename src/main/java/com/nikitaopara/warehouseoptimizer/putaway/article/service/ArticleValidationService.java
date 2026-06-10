@@ -3,6 +3,7 @@ package com.nikitaopara.warehouseoptimizer.putaway.article.service;
 import com.nikitaopara.warehouseoptimizer.account.model.Role;
 import com.nikitaopara.warehouseoptimizer.account.model.User;
 import com.nikitaopara.warehouseoptimizer.putaway.article.dto.CreateArticleRequest;
+import com.nikitaopara.warehouseoptimizer.putaway.article.dto.CreateArticlesBatchRequest;
 import com.nikitaopara.warehouseoptimizer.putaway.article.dto.UpdateArticleRequest;
 import com.nikitaopara.warehouseoptimizer.putaway.container.repository.ContainerRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,21 +18,31 @@ import java.math.BigDecimal;
 public class ArticleValidationService {
 
     private final ArticleDataService articleDataService;
-
     private final ContainerRepository containerRepository;
 
     public void validateCreateArticleRequest(User actor, CreateArticleRequest request) {
         validateAdminActor(actor);
-        validateCreateRequestExists(request);
-        validateArticleNumberForCreate(request.articleNumber());
-        validateRequiredText(request.name());
-        validateRequiredObject(request.unitType());
+        validateCreateArticleFields(request);
+        validateArticleNumberDoesNotExist(request.articleNumber());
+    }
 
-        validatePositiveInteger(request.unitWidthMm(), "Unit width must be greater than zero");
-        validatePositiveInteger(request.unitLengthMm(), "Unit length must be greater than zero");
-        validatePositiveInteger(request.unitHeightMm(), "Unit height must be greater than zero");
-        validatePositiveBigDecimal(request.unitWeightKg());
-        validatePositiveInteger(request.maxQuantityPerPallet(), "Max quantity per pallet must be greater than zero");
+    public void validateCreateArticlesBatchRequest(
+            User actor,
+            CreateArticlesBatchRequest request
+    ) {
+        validateAdminActor(actor);
+
+        if (request == null) {
+            throw new IllegalArgumentException("Create articles batch request cannot be null");
+        }
+
+        if (request.articles() == null || request.articles().isEmpty()) {
+            throw new IllegalArgumentException("Articles are required");
+        }
+
+        for (CreateArticleRequest articleRequest : request.articles()) {
+            validateCreateArticleFields(articleRequest);
+        }
     }
 
     public void validateUpdateArticleRequest(User actor, UpdateArticleRequest request) {
@@ -62,7 +73,10 @@ public class ArticleValidationService {
         }
 
         if (request.maxQuantityPerPallet() != null) {
-            validatePositiveInteger(request.maxQuantityPerPallet(), "Max quantity per pallet must be greater than zero");
+            validatePositiveInteger(
+                    request.maxQuantityPerPallet(),
+                    "Max quantity per pallet must be greater than zero"
+            );
         }
     }
 
@@ -90,13 +104,43 @@ public class ArticleValidationService {
         }
     }
 
+    private void validateCreateArticleFields(CreateArticleRequest request) {
+        validateCreateRequestExists(request);
+        validateArticleNumberFormat(request.articleNumber());
+        validateRequiredText(request.name());
+        validateRequiredObject(request.unitType());
+
+        validatePositiveInteger(request.unitWidthMm(), "Unit width must be greater than zero");
+        validatePositiveInteger(request.unitLengthMm(), "Unit length must be greater than zero");
+        validatePositiveInteger(request.unitHeightMm(), "Unit height must be greater than zero");
+        validatePositiveBigDecimal(request.unitWeightKg());
+        validatePositiveInteger(
+                request.maxQuantityPerPallet(),
+                "Max quantity per pallet must be greater than zero"
+        );
+    }
+
     private void validateCreateRequestExists(CreateArticleRequest request) {
         if (request == null) {
             throw new IllegalArgumentException("Create article request cannot be null");
         }
     }
 
-    private void validateArticleNumberForCreate(String articleNumber) {
+    private void validateArticleNumberDoesNotExist(String articleNumber) {
+        if (!StringUtils.hasText(articleNumber)) {
+            return;
+        }
+
+        String normalizedArticleNumber = articleNumber.trim();
+
+        if (articleDataService.existsByArticleNumber(normalizedArticleNumber)) {
+            throw new IllegalArgumentException(
+                    "Article with this article number already exists: " + normalizedArticleNumber
+            );
+        }
+    }
+
+    private void validateArticleNumberFormat(String articleNumber) {
         if (!StringUtils.hasText(articleNumber)) {
             return;
         }
@@ -105,10 +149,6 @@ public class ArticleValidationService {
 
         if (!normalizedArticleNumber.matches("\\d+")) {
             throw new IllegalArgumentException("Article number must contain only digits");
-        }
-
-        if (articleDataService.existsByArticleNumber(normalizedArticleNumber)) {
-            throw new IllegalArgumentException("Article with this article number already exists");
         }
     }
 

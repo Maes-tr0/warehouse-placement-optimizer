@@ -1,8 +1,6 @@
 package com.nikitaopara.warehouseoptimizer.putaway.article.controller;
 
-import com.nikitaopara.warehouseoptimizer.putaway.article.dto.ArticleResponse;
-import com.nikitaopara.warehouseoptimizer.putaway.article.dto.CreateArticleRequest;
-import com.nikitaopara.warehouseoptimizer.putaway.article.dto.UpdateArticleRequest;
+import com.nikitaopara.warehouseoptimizer.putaway.article.dto.*;
 import com.nikitaopara.warehouseoptimizer.putaway.article.service.ArticleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -59,5 +57,14 @@ public class ArticleController {
         articleService.deleteArticle(id);
 
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/batch")
+    public ResponseEntity<CreateArticlesBatchResponse> createArticlesBatch(
+            @RequestBody CreateArticlesBatchRequest request
+    ) {
+        CreateArticlesBatchResponse response = articleService.createArticlesBatch(request);
+
+        return ResponseEntity.ok(response);
     }
 }

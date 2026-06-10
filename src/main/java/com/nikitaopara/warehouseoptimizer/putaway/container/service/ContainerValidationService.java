@@ -3,10 +3,7 @@ package com.nikitaopara.warehouseoptimizer.putaway.container.service;
 import com.nikitaopara.warehouseoptimizer.account.model.Role;
 import com.nikitaopara.warehouseoptimizer.account.model.User;
 import com.nikitaopara.warehouseoptimizer.putaway.article.model.Article;
-import com.nikitaopara.warehouseoptimizer.putaway.container.dto.MergeContainerRequest;
-import com.nikitaopara.warehouseoptimizer.putaway.container.dto.PlaceContainerRequest;
-import com.nikitaopara.warehouseoptimizer.putaway.container.dto.ReceiveContainerRequest;
-import com.nikitaopara.warehouseoptimizer.putaway.container.dto.UpdateContainerRequest;
+import com.nikitaopara.warehouseoptimizer.putaway.container.dto.*;
 import com.nikitaopara.warehouseoptimizer.putaway.container.model.Container;
 import com.nikitaopara.warehouseoptimizer.warehouse.model.StoragePlace;
 import com.nikitaopara.warehouseoptimizer.warehouse.model.StoragePlaceStatus;
@@ -25,30 +22,27 @@ public class ContainerValidationService {
 
     public void validateReceiveContainerRequest(User actor, ReceiveContainerRequest request) {
         validateOperatorOrAdmin(actor);
+        validateReceiveContainerFields(request);
+        validateContainerNumberDoesNotExist(request.containerNumber());
+    }
+
+    public void validateReceiveContainersBatchRequest(
+            User actor,
+            ReceiveContainersBatchRequest request
+    ) {
+        validateOperatorOrAdmin(actor);
 
         if (request == null) {
-            throw new IllegalArgumentException("Receive container request cannot be null");
+            throw new IllegalArgumentException("Receive containers batch request cannot be null");
         }
 
-        if (request.warehouseId() == null) {
-            throw new IllegalArgumentException("Warehouse id is required");
+        if (request.containers() == null || request.containers().isEmpty()) {
+            throw new IllegalArgumentException("Containers are required");
         }
 
-        if (!StringUtils.hasText(request.containerNumber())) {
-            throw new IllegalArgumentException("Container number is required");
+        for (ReceiveContainerRequest containerRequest : request.containers()) {
+            validateReceiveContainerFields(containerRequest);
         }
-
-        if (containerDataService.existsByContainerNumber(request.containerNumber().trim())) {
-            throw new IllegalArgumentException("Container with this number already exists");
-        }
-
-        if (!StringUtils.hasText(request.articleNumber())) {
-            throw new IllegalArgumentException("Article number is required");
-        }
-
-        validatePositiveInteger(request.quantity(), "Quantity must be greater than zero");
-        validatePositiveBigDecimal(request.weightKg(), "Weight must be greater than zero");
-        validatePositiveInteger(request.heightMm(), "Height must be greater than zero");
     }
 
     public void validateUpdateContainerRequest(User actor, UpdateContainerRequest request) {
@@ -218,6 +212,38 @@ public class ContainerValidationService {
 
         if (container.isRemoved()) {
             throw new IllegalArgumentException("Container is already removed");
+        }
+    }
+
+    private void validateReceiveContainerFields(ReceiveContainerRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Receive container request cannot be null");
+        }
+
+        if (request.warehouseId() == null) {
+            throw new IllegalArgumentException("Warehouse id is required");
+        }
+
+        if (!StringUtils.hasText(request.containerNumber())) {
+            throw new IllegalArgumentException("Container number is required");
+        }
+
+        if (!StringUtils.hasText(request.articleNumber())) {
+            throw new IllegalArgumentException("Article number is required");
+        }
+
+        validatePositiveInteger(request.quantity(), "Quantity must be greater than zero");
+        validatePositiveBigDecimal(request.weightKg(), "Weight must be greater than zero");
+        validatePositiveInteger(request.heightMm(), "Height must be greater than zero");
+    }
+
+    private void validateContainerNumberDoesNotExist(String containerNumber) {
+        String normalizedContainerNumber = containerNumber.trim();
+
+        if (containerDataService.existsByContainerNumber(normalizedContainerNumber)) {
+            throw new IllegalArgumentException(
+                    "Container with this number already exists: " + normalizedContainerNumber
+            );
         }
     }
 

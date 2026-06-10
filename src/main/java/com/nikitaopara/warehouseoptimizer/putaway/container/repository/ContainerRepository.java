@@ -4,8 +4,10 @@ import com.nikitaopara.warehouseoptimizer.putaway.container.model.Container;
 import com.nikitaopara.warehouseoptimizer.putaway.container.model.ContainerStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface ContainerRepository extends JpaRepository<Container, Long> {
 
@@ -20,4 +22,6 @@ public interface ContainerRepository extends JpaRepository<Container, Long> {
             Long articleId,
             ContainerStatus status
     );
+
+    List<Container> findByContainerNumberIn(Collection<String> containerNumbers);
 }
