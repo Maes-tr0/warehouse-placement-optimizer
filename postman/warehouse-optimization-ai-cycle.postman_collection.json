@@ -26,6 +26,11 @@
       "script": {
         "type": "text/javascript",
         "exec": [
+          "const username = pm.environment.get('username');",
+          "const password = pm.environment.get('password');",
+          "if (!username || !password || password === 'replace-with-your-password') {",
+          "  throw new Error('Select the Warehouse Optimization AI - Local environment and set its real ROOT_ADMIN username/password before running the collection.');",
+          "}",
           "if (!pm.collectionVariables.get('runId')) {",
           "  const runId = Date.now().toString();",
           "  pm.collectionVariables.set('runId', runId);",

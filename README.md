@@ -919,12 +919,27 @@ postman/warehouse-optimization-ai-cycle.postman_collection.json
 postman/warehouse-optimization-ai-local.postman_environment.json
 ```
 
-Set the correct root administrator credentials in the imported environment. Start the
-application with the local Postman profile:
+Set the same root administrator credentials in the imported Postman environment and
+when starting the application. For a new local database, use for example:
 
 ```bash
-SPRING_PROFILES_ACTIVE=postman ./mvnw spring-boot:run
+APP_ADMIN_EMAIL=admin@example.com \
+APP_ADMIN_PASSWORD='local-test-password' \
+APP_ADMIN_FULL_NAME='Local Root Admin' \
+SPRING_PROFILES_ACTIVE=postman \
+./mvnw spring-boot:run
 ```
+
+Then set these environment values in Postman and select the environment in the top
+right corner before opening Collection Runner:
+
+```text
+username = admin@example.com
+password = local-test-password
+```
+
+If the database already contains a `ROOT_ADMIN`, bootstrap variables do not replace
+that account. Use the existing account credentials or reset the local database first.
 
 The profile checks warehouse optimization every 10 seconds and demand model training
 every 15 seconds. These fast schedules are test-only and do not change the default
