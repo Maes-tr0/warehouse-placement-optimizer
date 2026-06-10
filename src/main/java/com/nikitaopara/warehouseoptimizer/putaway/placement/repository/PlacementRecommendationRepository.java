@@ -4,13 +4,29 @@ import com.nikitaopara.warehouseoptimizer.putaway.placement.model.PlacementRecom
 import com.nikitaopara.warehouseoptimizer.putaway.placement.model.PlacementRecommendationStatus;
 import com.nikitaopara.warehouseoptimizer.putaway.placement.model.PlacementRecommendationType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
 public interface PlacementRecommendationRepository extends JpaRepository<PlacementRecommendation, Long> {
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update PlacementRecommendation pr
+            set pr.status = :expiredStatus,
+                pr.updatedAt = :expiredAt
+            where pr.status = :suggestedStatus
+              and pr.expiresAt <= :expiredAt
+            """)
+    int expireRecommendations(
+            PlacementRecommendationStatus suggestedStatus,
+            PlacementRecommendationStatus expiredStatus,
+            LocalDateTime expiredAt
+    );
 
     Optional<PlacementRecommendation> findByCode(String code);
 

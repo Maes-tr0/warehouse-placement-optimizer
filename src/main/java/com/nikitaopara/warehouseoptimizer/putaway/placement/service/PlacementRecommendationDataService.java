@@ -1,5 +1,6 @@
 package com.nikitaopara.warehouseoptimizer.putaway.placement.service;
 
+import com.nikitaopara.warehouseoptimizer.common.error.ResourceNotFoundException;
 import com.nikitaopara.warehouseoptimizer.putaway.container.model.Container;
 import com.nikitaopara.warehouseoptimizer.putaway.placement.model.PlacementRecommendation;
 import com.nikitaopara.warehouseoptimizer.putaway.placement.model.PlacementRecommendationStatus;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -22,9 +24,17 @@ public class PlacementRecommendationDataService {
         return placementRecommendationRepository.save(recommendation);
     }
 
+    public int expireSuggestedRecommendations() {
+        return placementRecommendationRepository.expireRecommendations(
+                PlacementRecommendationStatus.SUGGESTED,
+                PlacementRecommendationStatus.EXPIRED,
+                LocalDateTime.now()
+        );
+    }
+
     public PlacementRecommendation getByCodeOrThrow(String code) {
         return placementRecommendationRepository.findByCode(code)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "Placement recommendation not found by code: " + code
                 ));
     }
