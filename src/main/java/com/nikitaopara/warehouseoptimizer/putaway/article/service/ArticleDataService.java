@@ -1,5 +1,6 @@
 package com.nikitaopara.warehouseoptimizer.putaway.article.service;
 
+import com.nikitaopara.warehouseoptimizer.common.error.ResourceNotFoundException;
 import com.nikitaopara.warehouseoptimizer.putaway.article.model.Article;
 import com.nikitaopara.warehouseoptimizer.putaway.article.repository.ArticleRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,14 +25,14 @@ public class ArticleDataService {
 
     public Article getByIdOrThrow(Long id) {
         return articleRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "Article not found by id: " + id
                 ));
     }
 
     public Article getByArticleNumberOrThrow(String articleNumber) {
         return articleRepository.findByArticleNumber(articleNumber)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "Article not found by article number: " + articleNumber
                 ));
     }

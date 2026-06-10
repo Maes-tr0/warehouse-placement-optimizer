@@ -1,5 +1,7 @@
 package com.nikitaopara.warehouseoptimizer.putaway.container.service;
 
+import com.nikitaopara.warehouseoptimizer.common.error.ResourceNotFoundException;
+import com.nikitaopara.warehouseoptimizer.putaway.article.model.Article;
 import com.nikitaopara.warehouseoptimizer.putaway.container.model.Container;
 import com.nikitaopara.warehouseoptimizer.putaway.container.model.ContainerStatus;
 import com.nikitaopara.warehouseoptimizer.putaway.container.repository.ContainerRepository;
@@ -11,10 +13,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,7 +31,7 @@ public class ContainerDataService {
 
     public Container getByContainerNumberOrThrow(String containerNumber) {
         return containerRepository.findByContainerNumber(containerNumber)
-                .orElseThrow(() -> new IllegalArgumentException("Container not found by number: " + containerNumber));
+                .orElseThrow(() -> new ResourceNotFoundException("Container not found by number: " + containerNumber));
     }
 
     public List<Container> getAll() {
@@ -52,12 +52,12 @@ public class ContainerDataService {
 
     public Warehouse getWarehouseByIdOrThrow(Long warehouseId) {
         return warehouseRepository.findById(warehouseId)
-                .orElseThrow(() -> new IllegalArgumentException("Warehouse not found by id: " + warehouseId));
+                .orElseThrow(() -> new ResourceNotFoundException("Warehouse not found by id: " + warehouseId));
     }
 
     public StoragePlace getStoragePlaceByWarehouseAndCodeOrThrow(Long warehouseId, String storagePlaceCode) {
         return storagePlaceRepository.findStoragePlaceByWarehouseIdAndCode(warehouseId, storagePlaceCode)
-                .orElseThrow(() -> new IllegalArgumentException("Storage place not found by code: " + storagePlaceCode));
+                .orElseThrow(() -> new ResourceNotFoundException("Storage place not found by code: " + storagePlaceCode));
     }
 
     public List<Container> saveOnlyNew(List<Container> containers) {
