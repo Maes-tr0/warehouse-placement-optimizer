@@ -138,9 +138,10 @@ public class DemandForecastModel {
         this.errorMessage = null;
     }
 
-    public void reject(LocalDateTime completedAt) {
+    public void reject(String reason, LocalDateTime completedAt) {
         this.status = DemandForecastModelStatus.REJECTED;
         this.modelArtifact = null;
+        this.errorMessage = reason;
         this.trainedAt = completedAt;
     }
 
