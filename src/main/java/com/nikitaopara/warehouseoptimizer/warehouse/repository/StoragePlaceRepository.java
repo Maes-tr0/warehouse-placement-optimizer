@@ -15,4 +15,6 @@ public interface StoragePlaceRepository extends JpaRepository<StoragePlace, Long
             Long warehouseId,
             StoragePlaceStatus status
     );
+
+    List<StoragePlace> findByWarehouseIdOrderByDistanceFromEntryMmAsc(Long warehouseId);
 }

@@ -2,6 +2,7 @@ package com.nikitaopara.warehouseoptimizer.putaway.container.repository;
 
 import com.nikitaopara.warehouseoptimizer.putaway.container.model.Container;
 import com.nikitaopara.warehouseoptimizer.putaway.container.model.ContainerStatus;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Collection;
@@ -22,6 +23,9 @@ public interface ContainerRepository extends JpaRepository<Container, Long> {
             Long articleId,
             ContainerStatus status
     );
+
+    @EntityGraph(attributePaths = {"article", "currentStoragePlace"})
+    List<Container> findByWarehouseIdAndStatus(Long warehouseId, ContainerStatus status);
 
     List<Container> findByContainerNumberIn(Collection<String> containerNumbers);
 }
