@@ -1,9 +1,9 @@
 package com.nikitaopara.warehouseoptimizer.optimization.service;
 
+import com.nikitaopara.warehouseoptimizer.demand.forecast.service.DemandForecastScoringService;
 import com.nikitaopara.warehouseoptimizer.demand.model.OrderDemand;
 import com.nikitaopara.warehouseoptimizer.demand.model.OrderDemandItem;
 import com.nikitaopara.warehouseoptimizer.demand.repository.OrderDemandItemRepository;
-import com.nikitaopara.warehouseoptimizer.demand.forecast.service.DemandForecastScoringService;
 import com.nikitaopara.warehouseoptimizer.eventing.service.DomainEventPublisher;
 import com.nikitaopara.warehouseoptimizer.observability.WarehouseBusinessMetrics;
 import com.nikitaopara.warehouseoptimizer.optimization.config.OptimizationProperties;

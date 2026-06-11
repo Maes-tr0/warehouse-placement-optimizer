@@ -4,15 +4,7 @@ import com.nikitaopara.warehouseoptimizer.warehouse.routing.model.WarehouseRoute
 import com.nikitaopara.warehouseoptimizer.warehouse.routing.model.WarehouseRouteNode;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.PriorityQueue;
+import java.util.*;
 
 @Component
 public class DijkstraWarehouseRouter {

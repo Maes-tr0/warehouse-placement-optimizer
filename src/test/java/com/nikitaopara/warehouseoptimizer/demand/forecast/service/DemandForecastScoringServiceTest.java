@@ -174,7 +174,7 @@ class DemandForecastScoringServiceTest {
         return new DemandObservation(
                 articleId,
                 articleId * 10,
-                LocalDateTime.from(date.atStartOfDay()),
+                date.atStartOfDay(),
                 quantity
         );
     }

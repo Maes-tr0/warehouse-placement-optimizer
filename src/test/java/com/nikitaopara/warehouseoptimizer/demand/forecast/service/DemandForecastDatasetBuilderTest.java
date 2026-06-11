@@ -126,7 +126,7 @@ class DemandForecastDatasetBuilderTest {
             LocalDate date,
             int quantity
     ) {
-        return new DemandObservation(articleId, orderId, LocalDateTime.from(date.atStartOfDay()), quantity);
+        return new DemandObservation(articleId, orderId, date.atStartOfDay(), quantity);
     }
 
     private double feature(DemandForecastRow row, String name) {

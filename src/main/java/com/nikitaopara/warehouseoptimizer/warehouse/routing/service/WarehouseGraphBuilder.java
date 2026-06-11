@@ -6,12 +6,7 @@ import com.nikitaopara.warehouseoptimizer.warehouse.routing.model.WarehouseRoute
 import com.nikitaopara.warehouseoptimizer.warehouse.routing.model.WarehouseRouteNodeType;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 @Component
 public class WarehouseGraphBuilder {

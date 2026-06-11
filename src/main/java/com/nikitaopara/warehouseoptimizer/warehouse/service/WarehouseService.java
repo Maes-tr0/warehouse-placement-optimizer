@@ -2,16 +2,16 @@ package com.nikitaopara.warehouseoptimizer.warehouse.service;
 
 import com.nikitaopara.warehouseoptimizer.account.model.User;
 import com.nikitaopara.warehouseoptimizer.auth.service.AuthenticatedUserService;
+import com.nikitaopara.warehouseoptimizer.cache.config.CacheNames;
+import com.nikitaopara.warehouseoptimizer.common.error.ResourceNotFoundException;
 import com.nikitaopara.warehouseoptimizer.warehouse.dto.CreateWarehouseRequest;
-import com.nikitaopara.warehouseoptimizer.warehouse.dto.WarehouseResponse;
 import com.nikitaopara.warehouseoptimizer.warehouse.dto.StoragePlaceResponse;
+import com.nikitaopara.warehouseoptimizer.warehouse.dto.WarehouseResponse;
 import com.nikitaopara.warehouseoptimizer.warehouse.dto.WarehouseSummaryResponse;
-import com.nikitaopara.warehouseoptimizer.warehouse.model.Warehouse;
 import com.nikitaopara.warehouseoptimizer.warehouse.model.StoragePlaceStatus;
+import com.nikitaopara.warehouseoptimizer.warehouse.model.Warehouse;
 import com.nikitaopara.warehouseoptimizer.warehouse.repository.StoragePlaceRepository;
 import com.nikitaopara.warehouseoptimizer.warehouse.repository.WarehouseRepository;
-import com.nikitaopara.warehouseoptimizer.common.error.ResourceNotFoundException;
-import com.nikitaopara.warehouseoptimizer.cache.config.CacheNames;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -75,9 +75,9 @@ public class WarehouseService {
         var places = status == null
                 ? storagePlaceRepository.findByWarehouseIdOrderByDistanceFromEntryMmAsc(warehouseId)
                 : storagePlaceRepository.findByWarehouseIdAndStatusOrderByDistanceFromEntryMmAsc(
-                        warehouseId,
-                        status
-                );
+                warehouseId,
+                status
+        );
 
         return places.stream().map(StoragePlaceResponse::from).toList();
     }

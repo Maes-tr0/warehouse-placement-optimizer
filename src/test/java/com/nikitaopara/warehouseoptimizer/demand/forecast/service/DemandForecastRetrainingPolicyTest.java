@@ -67,7 +67,7 @@ class DemandForecastRetrainingPolicyTest {
 
     private DemandForecastModel modelTrainedDaysAgo(int days) {
         return DemandForecastModel.builder()
-                .trainedAt(LocalDateTime.from(today.minusDays(days).atStartOfDay()))
+                .trainedAt(today.minusDays(days).atStartOfDay())
                 .build();
     }
 }

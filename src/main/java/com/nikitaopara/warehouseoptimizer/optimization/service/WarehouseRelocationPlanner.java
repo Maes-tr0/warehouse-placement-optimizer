@@ -387,8 +387,8 @@ public class WarehouseRelocationPlanner {
     private boolean canFit(VirtualContainer container, StoragePlace place) {
         return place != null
                 && container.weightKg().compareTo(
-                        BigDecimal.valueOf(place.getMaxWeightKg())
-                ) <= 0
+                BigDecimal.valueOf(place.getMaxWeightKg())
+        ) <= 0
                 && container.heightMm() <= place.getMaxHeightMm();
     }
 

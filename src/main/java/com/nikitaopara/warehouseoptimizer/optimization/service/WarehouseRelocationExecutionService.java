@@ -237,9 +237,9 @@ public class WarehouseRelocationExecutionService {
         if (expectedPlace == null
                 || container.getCurrentStoragePlace() == null
                 || !Objects.equals(
-                        container.getCurrentStoragePlace().getId(),
-                        expectedPlace.getId()
-                )) {
+                container.getCurrentStoragePlace().getId(),
+                expectedPlace.getId()
+        )) {
             throw new IllegalArgumentException(
                     "Container is not located at the storage place expected by the plan"
             );

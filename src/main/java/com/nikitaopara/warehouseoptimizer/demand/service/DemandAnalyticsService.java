@@ -1,7 +1,7 @@
 package com.nikitaopara.warehouseoptimizer.demand.service;
 
-import com.nikitaopara.warehouseoptimizer.common.error.ResourceNotFoundException;
 import com.nikitaopara.warehouseoptimizer.cache.config.CacheNames;
+import com.nikitaopara.warehouseoptimizer.common.error.ResourceNotFoundException;
 import com.nikitaopara.warehouseoptimizer.demand.dto.DemandArticleAnalyticsResponse;
 import com.nikitaopara.warehouseoptimizer.demand.forecast.model.DemandForecastScore;
 import com.nikitaopara.warehouseoptimizer.demand.forecast.service.DemandForecastScoringService;
@@ -15,8 +15,8 @@ import com.nikitaopara.warehouseoptimizer.putaway.container.model.ContainerStatu
 import com.nikitaopara.warehouseoptimizer.putaway.container.repository.ContainerRepository;
 import com.nikitaopara.warehouseoptimizer.warehouse.repository.WarehouseRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -24,12 +24,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -271,7 +266,7 @@ public class DemandAnalyticsService {
             BigDecimal average = quantity == 0
                     ? null
                     : BigDecimal.valueOf(quantityWeightedDistance)
-                            .divide(BigDecimal.valueOf(quantity), 2, RoundingMode.HALF_UP);
+                    .divide(BigDecimal.valueOf(quantity), 2, RoundingMode.HALF_UP);
             return new InventorySummary(quantity, containerCount, average);
         }
     }

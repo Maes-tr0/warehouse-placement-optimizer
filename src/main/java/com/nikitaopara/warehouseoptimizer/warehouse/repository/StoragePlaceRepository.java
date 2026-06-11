@@ -2,9 +2,8 @@ package com.nikitaopara.warehouseoptimizer.warehouse.repository;
 
 import com.nikitaopara.warehouseoptimizer.warehouse.model.StoragePlace;
 import com.nikitaopara.warehouseoptimizer.warehouse.model.StoragePlaceStatus;
-import com.nikitaopara.warehouseoptimizer.warehouse.model.Warehouse;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.Optional;

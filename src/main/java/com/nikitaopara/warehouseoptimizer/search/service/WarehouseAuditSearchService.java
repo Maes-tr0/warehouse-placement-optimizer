@@ -42,14 +42,14 @@ public class WarehouseAuditSearchService {
         Page<WarehouseAuditEventDocument> result =
                 eventType == null || eventType.isBlank()
                         ? repository.findByWarehouseKeyOrderByOccurredAtDesc(
-                                warehouseCode,
-                                pageable
-                        )
+                        warehouseCode,
+                        pageable
+                )
                         : repository.findByWarehouseKeyAndEventTypeOrderByOccurredAtDesc(
-                                warehouseCode,
-                                eventType,
-                                pageable
-                        );
+                        warehouseCode,
+                        eventType,
+                        pageable
+                );
 
         return new WarehouseAuditSearchResponse(
                 result.getContent().stream().map(WarehouseAuditEventResponse::from).toList(),

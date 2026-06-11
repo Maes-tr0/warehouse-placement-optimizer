@@ -1,11 +1,7 @@
 package com.nikitaopara.warehouseoptimizer.demand.forecast.service;
 
 import com.nikitaopara.warehouseoptimizer.demand.forecast.config.DemandForecastProperties;
-import com.nikitaopara.warehouseoptimizer.demand.forecast.model.DemandForecastModel;
-import com.nikitaopara.warehouseoptimizer.demand.forecast.model.DemandForecastModelStatus;
-import com.nikitaopara.warehouseoptimizer.demand.forecast.model.DemandForecastRow;
-import com.nikitaopara.warehouseoptimizer.demand.forecast.model.DemandForecastScore;
-import com.nikitaopara.warehouseoptimizer.demand.forecast.model.DemandScoreSource;
+import com.nikitaopara.warehouseoptimizer.demand.forecast.model.*;
 import com.nikitaopara.warehouseoptimizer.demand.forecast.repository.DemandForecastModelRepository;
 import com.nikitaopara.warehouseoptimizer.optimization.config.OptimizationProperties;
 import com.nikitaopara.warehouseoptimizer.optimization.model.ArticleDemandScore;

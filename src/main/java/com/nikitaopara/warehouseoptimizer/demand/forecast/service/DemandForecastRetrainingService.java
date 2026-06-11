@@ -37,10 +37,10 @@ public class DemandForecastRetrainingService {
         long newObservationCount = activeModel == null
                 ? 0
                 : orderDemandItemRepository
-                        .countByWarehouseIdAndCreatedAtAfter(
-                                warehouseId,
-                                activeModel.getTrainedAt()
-                        );
+                .countByWarehouseIdAndCreatedAtAfter(
+                        warehouseId,
+                        activeModel.getTrainedAt()
+                );
 
         if (!policy.shouldRetrain(activeModel, latestAttempt, newObservationCount, today)) {
             return Optional.empty();

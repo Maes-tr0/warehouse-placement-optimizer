@@ -42,7 +42,7 @@ public class OptimizationEmailNotificationService {
         message.setSubject("Warehouse " + assessment.warehouseCode() + " needs optimization");
         message.setText("""
                 Warehouse optimization assessment recommends relocation planning.
-
+                
                 Warehouse: %s
                 Score: %s%%
                 Threshold: %s%%

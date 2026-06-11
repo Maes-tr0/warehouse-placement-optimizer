@@ -1,7 +1,7 @@
 package com.nikitaopara.warehouseoptimizer.demand.forecast.service;
 
-import com.nikitaopara.warehouseoptimizer.common.error.ResourceNotFoundException;
 import com.nikitaopara.warehouseoptimizer.cache.config.CacheNames;
+import com.nikitaopara.warehouseoptimizer.common.error.ResourceNotFoundException;
 import com.nikitaopara.warehouseoptimizer.demand.forecast.config.DemandForecastProperties;
 import com.nikitaopara.warehouseoptimizer.demand.forecast.model.*;
 import com.nikitaopara.warehouseoptimizer.demand.forecast.repository.DemandForecastModelRepository;
@@ -11,8 +11,8 @@ import com.nikitaopara.warehouseoptimizer.optimization.model.DemandObservation;
 import com.nikitaopara.warehouseoptimizer.warehouse.model.Warehouse;
 import com.nikitaopara.warehouseoptimizer.warehouse.repository.WarehouseRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -184,12 +184,12 @@ public class DemandForecastTrainingService {
         DemandForecastMetrics metrics = model.getModelMae() == null
                 ? null
                 : new DemandForecastMetrics(
-                        model.getModelMae(),
-                        model.getBaselineMae(),
-                        model.getModelRmse(),
-                        model.getModelR2(),
-                        model.getImprovementPercent()
-                );
+                model.getModelMae(),
+                model.getBaselineMae(),
+                model.getModelRmse(),
+                model.getModelR2(),
+                model.getImprovementPercent()
+        );
 
         return new DemandForecastTrainingResult(
                 model.getCode(),

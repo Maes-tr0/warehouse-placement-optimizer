@@ -6,11 +6,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 @Service
 public class SeasonalDemandModel {
@@ -85,9 +81,9 @@ public class SeasonalDemandModel {
     }
 
     private static final class MutableDemandScore {
+        private final Set<Long> orderIds = new HashSet<>();
         private double weightedDemand;
         private long totalQuantity;
-        private final Set<Long> orderIds = new HashSet<>();
 
         private void add(Long orderId, int quantity, double weightedQuantity) {
             weightedDemand += weightedQuantity;

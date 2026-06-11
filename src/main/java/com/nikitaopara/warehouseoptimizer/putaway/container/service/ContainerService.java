@@ -1,13 +1,10 @@
 package com.nikitaopara.warehouseoptimizer.putaway.container.service;
 
 import com.nikitaopara.warehouseoptimizer.account.model.User;
-import com.nikitaopara.warehouseoptimizer.cache.config.CacheNames;
 import com.nikitaopara.warehouseoptimizer.auth.service.AuthenticatedUserService;
+import com.nikitaopara.warehouseoptimizer.cache.config.CacheNames;
 import com.nikitaopara.warehouseoptimizer.movement.model.ContainerMovementType;
 import com.nikitaopara.warehouseoptimizer.movement.service.ContainerMovementService;
-import com.nikitaopara.warehouseoptimizer.putaway.article.dto.ArticleResponse;
-import com.nikitaopara.warehouseoptimizer.putaway.article.dto.CreateArticlesBatchRequest;
-import com.nikitaopara.warehouseoptimizer.putaway.article.dto.CreateArticlesBatchResponse;
 import com.nikitaopara.warehouseoptimizer.putaway.article.model.Article;
 import com.nikitaopara.warehouseoptimizer.putaway.article.service.ArticleDataService;
 import com.nikitaopara.warehouseoptimizer.putaway.container.dto.*;
@@ -17,16 +14,12 @@ import com.nikitaopara.warehouseoptimizer.warehouse.model.StoragePlace;
 import com.nikitaopara.warehouseoptimizer.warehouse.model.StoragePlaceStatus;
 import com.nikitaopara.warehouseoptimizer.warehouse.model.Warehouse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor

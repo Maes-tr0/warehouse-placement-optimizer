@@ -15,6 +15,7 @@ const state = {
     plan: null,
     recommendation: null
 };
+const rackLevelDrafts = [];
 
 const labels = {
     ACTIVE: "Active", INACTIVE: "Inactive", AVAILABLE: "Available", OCCUPIED: "Occupied",
@@ -47,7 +48,15 @@ async function api(path, options = {}) {
         body: options.body === undefined ? undefined : JSON.stringify(options.body)
     });
     const contentType = response.headers.get("content-type") || "";
-    const payload = response.status === 204 ? null : contentType.includes("json") ? await response.json() : await response.text();
+    const responseText = response.status === 204 ? "" : await response.text();
+    let payload = responseText || null;
+    if (responseText && contentType.includes("json")) {
+        try {
+            payload = JSON.parse(responseText);
+        } catch {
+            throw new Error(`The server returned invalid JSON for ${path}`);
+        }
+    }
     if (response.status === 401) {
         location.assign("/login?expired");
         throw new ApiError(response.status, payload);
@@ -74,7 +83,7 @@ function badge(value) {
 
 function formatDate(value) {
     if (!value) return "—";
-    return new Intl.DateTimeFormat("uk-UA", {dateStyle: "medium", timeStyle: "short"}).format(new Date(value));
+    return new Intl.DateTimeFormat("en-GB", {dateStyle: "medium", timeStyle: "short"}).format(new Date(value));
 }
 
 function num(value) {
@@ -97,7 +106,8 @@ function toast(message, type = "success") {
 
 function report(error) {
     console.error(error);
-    toast(error.payload?.message || error.message || "The action could not be completed", "error");
+    const payloadMessage = typeof error.payload === "string" ? error.payload : error.payload?.message;
+    toast(payloadMessage || error.message || "The action could not be completed", "error");
 }
 
 function requireWarehouse() {
@@ -115,7 +125,7 @@ function setProcessStep(selector, activeIndex) {
 
 function bindShell() {
     $("#menuButton")?.addEventListener("click", () => $("#sidebar")?.classList.toggle("open"));
-    $("[data-refresh]")?.addEventListener("click", () => location.reload());
+    $("[data-refresh]")?.addEventListener("click", refreshFromToolbar);
     $$('[data-dialog-open]').forEach(button => button.addEventListener("click", () => {
         const dialogId = button.dataset.dialogOpen;
         const dialog = $(`#${dialogId}`);
@@ -131,7 +141,15 @@ function bindShell() {
             form.reset();
             form.elements.id.value = "";
             form.elements.password.required = true;
+            delete form.dataset.original;
             $("#accountDialogTitle").textContent = "New user";
+        }
+        if (dialogId === "warehouseDialog") {
+            const form = $("#warehouseForm");
+            form.reset();
+            rackLevelDrafts.length = 0;
+            $("#levelProfiles").innerHTML = "";
+            renderRackLevelProfiles(num(form.elements.rackLevelCount.value));
         }
         dialog?.showModal();
     }));
@@ -142,10 +160,11 @@ function bindShell() {
     }));
 }
 
-async function loadWarehouses() {
+async function loadWarehouses(preferredWarehouseId = state.warehouseId) {
     const picker = $("#warehouseSelect");
     if (!picker) return;
     state.warehouses = await api(role === "operator" ? "/operator/warehouses" : "/admin/warehouses");
+    state.warehouseId = preferredWarehouseId ? String(preferredWarehouseId) : state.warehouseId;
     if (!state.warehouseId && state.warehouses.length) state.warehouseId = String(state.warehouses[0].id);
     if (state.warehouseId && !state.warehouses.some(item => String(item.id) === String(state.warehouseId))) {
         state.warehouseId = state.warehouses.length ? String(state.warehouses[0].id) : "";
@@ -155,10 +174,33 @@ async function loadWarehouses() {
         : '<option value="">No warehouses found</option>';
     picker.value = state.warehouseId;
     localStorage.setItem("wpo.activeWarehouseId", state.warehouseId);
-    picker.addEventListener("change", event => {
-        localStorage.setItem("wpo.activeWarehouseId", event.target.value);
-        location.reload();
-    });
+    picker.onchange = async event => {
+        state.warehouseId = event.target.value;
+        localStorage.setItem("wpo.activeWarehouseId", state.warehouseId);
+        try {
+            await refreshCurrentPage();
+            toast("Active warehouse changed");
+        } catch (error) {
+            report(error);
+        }
+    };
+}
+
+async function refreshFromToolbar(event) {
+    const button = event.currentTarget;
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = "Refreshing...";
+    try {
+        await loadWarehouses(state.warehouseId);
+        await refreshCurrentPage();
+        toast("Data refreshed");
+    } catch (error) {
+        report(error);
+    } finally {
+        button.disabled = false;
+        button.textContent = originalText;
+    }
 }
 
 async function loadAdminDashboard() {
@@ -195,18 +237,79 @@ async function loadAdminDashboard() {
 }
 
 async function loadWarehousePage() {
-    const warehouseId = requireWarehouse();
-    state.warehouse = await api(`/admin/warehouses/${warehouseId}`);
-    $("#warehouseAisles").textContent = state.warehouse.aisleCount ?? "—";
-    $("#warehouseRows").textContent = state.warehouse.rackRowCount ?? "—";
-    $("#warehousePlaces").textContent = state.warehouse.storagePlaceCount ?? "—";
-    $("#warehouseStatus").innerHTML = badge(state.warehouse.status);
-    await loadPlaces();
+    renderRackLevelProfiles(num($("#warehouseForm").elements.rackLevelCount.value));
+    $("#warehouseForm").elements.rackLevelCount.addEventListener("input", event => renderRackLevelProfiles(num(event.target.value)));
+    $("#warehouseForm").elements.palletPlacesPerLevel.addEventListener("input", updateBayLoadSummary);
+    $("#warehouseForm").elements.maxBayLoadKg.addEventListener("input", updateBayLoadSummary);
     $("[data-load-places]").addEventListener("click", () => loadPlaces().catch(report));
     $("#placeSearch").addEventListener("input", renderPlaces);
     $("#placeStatus").addEventListener("change", () => loadPlaces().catch(report));
     $("#routeForm").addEventListener("submit", event => { event.preventDefault(); loadRoute(formData(event.currentTarget).storagePlaceCode).catch(report); });
     $("#warehouseForm").addEventListener("submit", createWarehouse);
+    await refreshWarehouseData();
+}
+
+async function refreshWarehouseData() {
+    if (!state.warehouseId) {
+        state.warehouse = null;
+        state.places = [];
+        $("#warehouseAisles").textContent = "—";
+        $("#warehouseRows").textContent = "—";
+        $("#warehousePlaces").textContent = "—";
+        $("#warehouseStatus").textContent = "No warehouse";
+        renderPlaces();
+        return;
+    }
+    state.warehouse = await api(`/admin/warehouses/${requireWarehouse()}`);
+    $("#warehouseAisles").textContent = state.warehouse.aisleCount ?? "—";
+    $("#warehouseRows").textContent = state.warehouse.rackRowCount ?? "—";
+    $("#warehousePlaces").textContent = state.warehouse.storagePlaceCount ?? "—";
+    $("#warehouseStatus").innerHTML = badge(state.warehouse.status);
+    await loadPlaces();
+}
+
+function captureRackLevelDrafts() {
+    $$('[data-level-profile]').forEach(card => {
+        const index = Number(card.dataset.levelProfile) - 1;
+        rackLevelDrafts[index] = {
+            clearHeightMm: card.querySelector('[data-level-height]').value,
+            maxCellLoadKg: card.querySelector('[data-level-weight]').value
+        };
+    });
+}
+
+function renderRackLevelProfiles(levelCount) {
+    const root = $("#levelProfiles");
+    if (!root) return;
+    captureRackLevelDrafts();
+    const safeCount = Math.min(20, Math.max(1, Number.isFinite(levelCount) ? levelCount : 1));
+    root.innerHTML = Array.from({length: safeCount}, (_, index) => {
+        const level = index + 1;
+        const draft = rackLevelDrafts[index] || {
+            clearHeightMm: Math.max(800, 2000 - level * 200),
+            maxCellLoadKg: Math.max(500, 1100 - level * 100)
+        };
+        rackLevelDrafts[index] = draft;
+        return `<div data-level-profile="${level}"><b>Level ${level}</b><label>Height, mm<input data-level-height type="number" min="1" value="${escapeHtml(draft.clearHeightMm)}" required></label><label>Weight, kg<input data-level-weight type="number" min="1" value="${escapeHtml(draft.maxCellLoadKg)}" required></label></div>`;
+    }).join("");
+    $$('[data-level-profile] input', root).forEach(input => input.addEventListener("input", updateBayLoadSummary));
+    updateBayLoadSummary();
+}
+
+function calculatedBayLoad() {
+    const places = num($("#warehouseForm")?.elements.palletPlacesPerLevel.value) || 0;
+    const levelLoad = $$('[data-level-weight]').reduce((total, input) => total + (num(input.value) || 0), 0);
+    return places * levelLoad;
+}
+
+function updateBayLoadSummary() {
+    const summary = $("#bayLoadSummary");
+    if (!summary) return;
+    const calculated = calculatedBayLoad();
+    const limit = num($("#warehouseForm").elements.maxBayLoadKg.value) || 0;
+    const exceeds = calculated > limit;
+    summary.textContent = `Calculated bay load: ${calculated.toLocaleString("en-GB")} kg${exceeds ? " (exceeds limit)" : ""}`;
+    summary.classList.toggle("validation-error", exceeds);
 }
 
 async function loadPlaces() {
@@ -238,12 +341,35 @@ async function loadRoute(code) {
 async function createWarehouse(event) {
     event.preventDefault();
     const data = formData(event.currentTarget);
-    const levelProfiles = [1, 2, 3].map(level => ({levelNumber: level, clearHeightMm: num(data[`level${level}Height`]), maxCellLoadKg: num(data[`level${level}Weight`])}));
-    [1, 2, 3].forEach(level => { delete data[`level${level}Height`]; delete data[`level${level}Weight`]; });
+    const levelProfiles = $$('[data-level-profile]').map(card => ({
+        levelNumber: num(card.dataset.levelProfile),
+        clearHeightMm: num(card.querySelector('[data-level-height]').value),
+        maxCellLoadKg: num(card.querySelector('[data-level-weight]').value)
+    }));
+    delete data.rackLevelCount;
+    if (calculatedBayLoad() > num(data.maxBayLoadKg)) {
+        toast("Calculated rack load exceeds the bay load limit", "error");
+        return;
+    }
+    let created;
     try {
-        const created = await api("/admin/warehouses", {method: "POST", body: {...data, aisleCount:num(data.aisleCount), rackRowCount:num(data.rackRowCount), baysPerRackRow:num(data.baysPerRackRow), palletPlacesPerLevel:num(data.palletPlacesPerLevel), aisleWidthMm:num(data.aisleWidthMm), maxBayLoadKg:num(data.maxBayLoadKg), levelProfiles}});
-        localStorage.setItem("wpo.activeWarehouseId", created.id); toast("Warehouse created"); location.reload();
-    } catch (error) { report(error); }
+        created = await api("/admin/warehouses", {method: "POST", body: {...data, aisleCount:num(data.aisleCount), rackRowCount:num(data.rackRowCount), baysPerRackRow:num(data.baysPerRackRow), palletPlacesPerLevel:num(data.palletPlacesPerLevel), aisleWidthMm:num(data.aisleWidthMm), maxBayLoadKg:num(data.maxBayLoadKg), levelProfiles}});
+    } catch (error) {
+        report(error);
+        return;
+    }
+    $("#warehouseDialog").close();
+    event.currentTarget.reset();
+    state.warehouseId = String(created.id);
+    localStorage.setItem("wpo.activeWarehouseId", state.warehouseId);
+    toast("Warehouse created");
+    try {
+        await loadWarehouses(state.warehouseId);
+        await refreshWarehouseData();
+    } catch (error) {
+        console.error(error);
+        toast("Warehouse was created, but the page data could not be refreshed", "error");
+    }
 }
 
 async function loadArticles() {
@@ -275,7 +401,21 @@ async function saveArticle(event) {
     event.preventDefault(); const data = formData(event.currentTarget), id = data.id; delete data.id;
     if (id) delete data.articleNumber;
     ["unitWidthMm", "unitLengthMm", "unitHeightMm", "unitWeightKg", "maxQuantityPerPallet"].forEach(key => data[key] = num(data[key]));
-    try { await api(id ? `/admin/articles/${id}` : "/admin/articles", {method: id ? "PATCH" : "POST", body: data}); $("#articleDialog").close(); event.currentTarget.reset(); await loadArticles(); toast("Article saved"); } catch (error) { report(error); }
+    try {
+        await api(id ? `/admin/articles/${id}` : "/admin/articles", {method: id ? "PATCH" : "POST", body: data});
+    } catch (error) {
+        report(error);
+        return;
+    }
+    $("#articleDialog").close();
+    event.currentTarget.reset();
+    toast("Article saved");
+    try {
+        await loadArticles();
+    } catch (error) {
+        console.error(error);
+        toast("Article was saved, but the list could not be refreshed", "error");
+    }
 }
 
 function renderModel(model) {
@@ -298,11 +438,17 @@ async function loadModels() {
 }
 
 async function loadAdminDemand() {
-    const results = await Promise.allSettled([loadDemand(), api(`/admin/warehouses/${requireWarehouse()}/demand-forecast-models/latest`), loadModels()]);
-    if (results[1].status === "fulfilled") renderModel(results[1].value);
+    await refreshAdminDemandData();
     $("#demandFilterForm").addEventListener("submit", event => { event.preventDefault(); loadDemand().catch(report); });
     $("#trainModelButton").addEventListener("click", async () => { try { const model = await api(`/admin/warehouses/${requireWarehouse()}/demand-forecast-models/train`, {method:"POST"}); renderModel(model); await loadModels(); toast("Model trained"); } catch (error) { report(error); } });
     $("#demandImportForm").addEventListener("submit", async event => { event.preventDefault(); try { const result = await api("/admin/demand-history/import", {method:"POST", body:{warehouseId:num(requireWarehouse()), orders:JSON.parse(formData(event.currentTarget).orders)}}); $("#demandDialog").close(); await loadDemand(); toast(`Imported orders: ${result.importedOrders}`); } catch (error) { report(error); } });
+}
+
+async function refreshAdminDemandData() {
+    const results = await Promise.allSettled([loadDemand(), api(`/admin/warehouses/${requireWarehouse()}/demand-forecast-models/latest`), loadModels()]);
+    if (results[1].status === "fulfilled") renderModel(results[1].value);
+    const firstFailure = results.find(result => result.status === "rejected" && result.reason?.status !== 404);
+    if (firstFailure) throw firstFailure.reason;
 }
 
 function renderAssessment(item) {
@@ -323,21 +469,68 @@ function renderPlan(plan) {
 }
 
 async function loadAdminOptimization() {
-    try { renderAssessment(await api(`/admin/warehouses/${requireWarehouse()}/optimization-assessments/latest`)); } catch (error) { if (error.status !== 404) report(error); }
+    await refreshAdminOptimizationData();
     $("#runAssessmentButton").addEventListener("click", async () => { try { renderAssessment(await api(`/admin/warehouses/${requireWarehouse()}/optimization-assessments`, {method:"POST"})); toast("Assessment completed"); } catch (error) { report(error); } });
     $("#latestAssessmentButton").addEventListener("click", async () => { try { renderAssessment(await api(`/admin/warehouses/${requireWarehouse()}/optimization-assessments/latest`)); } catch (error) { report(error); } });
     $("#createPlanButton").addEventListener("click", async () => { try { renderPlan(await api(`/admin/optimization-plans/assessments/${state.assessment.id}`, {method:"POST"})); toast("Plan created"); } catch (error) { report(error); } });
     $("#planLookupForm").addEventListener("submit", async event => { event.preventDefault(); try { renderPlan(await api(`/admin/optimization-plans/${encodeURIComponent(formData(event.currentTarget).planCode)}`)); } catch (error) { report(error); } });
 }
 
+async function refreshAdminOptimizationData() {
+    try {
+        renderAssessment(await api(`/admin/warehouses/${requireWarehouse()}/optimization-assessments/latest`));
+    } catch (error) {
+        if (error.status !== 404) throw error;
+    }
+}
+
 async function loadAccounts() {
     const items = await api("/admin/accounts");
-    $("#accountsTable").innerHTML = items.length ? items.map(item => `<tr><td><b>${escapeHtml(item.fullName)}</b><small class="block">${escapeHtml(item.email)}</small></td><td>${badge(item.role)}</td><td>${badge(item.status)}</td><td>${formatDate(item.createdAt)}</td><td>${formatDate(item.updatedAt)}</td><td><div class="row-actions"><button class="mini-button" data-account-edit="${item.id}">Edit</button><button class="mini-button" data-account-toggle="${item.id}" data-status="${item.status}">${item.status === "ACTIVE" ? "Deactivate" : "Activate"}</button></div></td></tr>`).join("") : '<tr><td colspan="6" class="empty-cell">No users found</td></tr>';
+    $("#accountsTable").innerHTML = items.length ? items.map(item => {
+        const actions = item.role === "ROOT_ADMIN"
+            ? '<span class="badge info">Protected account</span>'
+            : `<div class="row-actions"><button class="mini-button" data-account-edit="${item.id}">Edit</button><button class="mini-button" data-account-toggle="${item.id}" data-status="${item.status}">${item.status === "ACTIVE" ? "Deactivate" : "Activate"}</button></div>`;
+        return `<tr><td><b>${escapeHtml(item.fullName)}</b><small class="block">${escapeHtml(item.email)}</small></td><td>${badge(item.role)}</td><td>${badge(item.status)}</td><td>${formatDate(item.createdAt)}</td><td>${formatDate(item.updatedAt)}</td><td>${actions}</td></tr>`;
+    }).join("") : '<tr><td colspan="6" class="empty-cell">No users found</td></tr>';
 }
 
 async function loadAdminAccounts() {
     await loadAccounts();
-    $("#accountForm").addEventListener("submit", async event => { event.preventDefault(); const data = formData(event.currentTarget), id = data.id; delete data.id; if (id && !data.password) delete data.password; try { await api(id ? `/admin/accounts/${id}` : "/admin/accounts", {method:id ? "PATCH" : "POST", body:data}); $("#accountDialog").close(); event.currentTarget.reset(); await loadAccounts(); toast("User saved"); } catch (error) { report(error); } });
+    $("#accountForm").addEventListener("submit", saveAccount);
+}
+
+async function saveAccount(event) {
+    event.preventDefault();
+    const data = formData(event.currentTarget), id = data.id;
+    delete data.id;
+    if (id) {
+        const original = JSON.parse(event.currentTarget.dataset.original || "{}");
+        ["email", "fullName", "role"].forEach(key => {
+            if (data[key] === String(original[key] ?? "")) delete data[key];
+        });
+        if (!data.password) delete data.password;
+        if (!Object.keys(data).length) {
+            $("#accountDialog").close();
+            toast("No account changes to save");
+            return;
+        }
+    }
+    try {
+        await api(id ? `/admin/accounts/${id}` : "/admin/accounts", {method:id ? "PATCH" : "POST", body:data});
+    } catch (error) {
+        report(error);
+        return;
+    }
+    $("#accountDialog").close();
+    event.currentTarget.reset();
+    delete event.currentTarget.dataset.original;
+    toast("User saved");
+    try {
+        await loadAccounts();
+    } catch (error) {
+        console.error(error);
+        toast("User was saved, but the list could not be refreshed", "error");
+    }
 }
 
 async function loadOperatorDashboard() {
@@ -392,7 +585,7 @@ function bindDelegatedActions() {
             if (button.dataset.route) await loadRoute(button.dataset.route);
             if (button.dataset.articleEdit) { const item = await api(`/admin/articles/${button.dataset.articleEdit}`); const form = $("#articleForm"); Object.entries(item).forEach(([key,value]) => { if (form.elements[key]) form.elements[key].value = value ?? ""; }); form.elements.id.value = item.id; form.elements.articleNumber.disabled = true; $("#articleDialogTitle").textContent = `Edit ${item.articleNumber}`; $("#articleDialog").showModal(); }
             if (button.dataset.articleDelete && confirm("Delete this article from the catalog?")) { await api(`/admin/articles/${button.dataset.articleDelete}`, {method:"DELETE"}); await loadArticles(); toast("Article deleted"); }
-            if (button.dataset.accountEdit) { const item = await api(`/admin/accounts/${button.dataset.accountEdit}`); const form = $("#accountForm"); Object.entries(item).forEach(([key,value]) => { if (form.elements[key]) form.elements[key].value = value ?? ""; }); form.elements.id.value = item.id; form.elements.password.required = false; $("#accountDialogTitle").textContent = `Edit ${item.fullName}`; $("#accountDialog").showModal(); }
+            if (button.dataset.accountEdit) { const item = await api(`/admin/accounts/${button.dataset.accountEdit}`); const form = $("#accountForm"); Object.entries(item).forEach(([key,value]) => { if (form.elements[key]) form.elements[key].value = value ?? ""; }); form.elements.id.value = item.id; form.elements.password.required = false; form.dataset.original = JSON.stringify({email:item.email, fullName:item.fullName, role:item.role}); $("#accountDialogTitle").textContent = `Edit ${item.fullName}`; $("#accountDialog").showModal(); }
             if (button.dataset.accountToggle) { const action = button.dataset.status === "ACTIVE" ? "deactivate" : "activate"; await api(`/admin/accounts/${button.dataset.accountToggle}/${action}`, {method:"PATCH"}); await loadAccounts(); toast("User status changed"); }
             if (button.dataset.planApprove) { renderPlan(await api(`/admin/optimization-plans/${encodeURIComponent(button.dataset.planApprove)}/approve`, {method:"POST"})); toast("Plan assigned to operator"); }
             if (button.dataset.planCancel) { renderPlan(await api(`/admin/optimization-plans/${encodeURIComponent(button.dataset.planCancel)}/cancel`, {method:"POST"})); toast("Plan cancelled"); }
@@ -417,6 +610,22 @@ const pageInitializers = {
     "operator-relocation": loadOperatorRelocation,
     "operator-inventory": loadOperatorInventory
 };
+
+const pageRefreshers = {
+    "admin-dashboard": loadAdminDashboard,
+    "admin-warehouse": refreshWarehouseData,
+    "admin-inventory": () => Promise.all([loadArticles(), loadContainers()]),
+    "admin-demand": refreshAdminDemandData,
+    "admin-optimization": refreshAdminOptimizationData,
+    "admin-accounts": loadAccounts,
+    "operator-dashboard": loadOperatorDashboard,
+    "operator-inventory": loadContainers
+};
+
+async function refreshCurrentPage() {
+    const refresher = pageRefreshers[page];
+    if (refresher) await refresher();
+}
 
 async function init() {
     bindShell(); bindDelegatedActions();

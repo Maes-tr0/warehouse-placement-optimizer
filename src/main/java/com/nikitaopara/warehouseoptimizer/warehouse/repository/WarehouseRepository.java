@@ -1,11 +1,11 @@
 package com.nikitaopara.warehouseoptimizer.warehouse.repository;
 
+import com.nikitaopara.warehouseoptimizer.warehouse.dto.WarehouseSummaryResponse;
 import com.nikitaopara.warehouseoptimizer.warehouse.model.Warehouse;
 import com.nikitaopara.warehouseoptimizer.warehouse.model.WarehouseStatus;
-import com.nikitaopara.warehouseoptimizer.warehouse.dto.WarehouseSummaryResponse;
 import jakarta.persistence.LockModeType;
-import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;

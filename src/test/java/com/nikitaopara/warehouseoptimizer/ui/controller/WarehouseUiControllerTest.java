@@ -6,14 +6,15 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.web.servlet.MockMvc;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(controllers = WarehouseUiController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -72,6 +73,29 @@ class WarehouseUiControllerTest {
         mockMvc.perform(get(path))
                 .andExpect(status().isOk())
                 .andExpect(view().name(viewName));
+    }
+
+    @Test
+    @WithMockUser(roles = "ROOT_ADMIN")
+    void rendersDynamicWarehouseLevelControlsForRootAdministrator() throws Exception {
+        mockMvc.perform(get("/app/admin/warehouse"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("name=\"rackLevelCount\"")))
+                .andExpect(content().string(containsString("id=\"levelProfiles\"")))
+                .andExpect(content().string(containsString("max=\"4\"")))
+                .andExpect(content().string(containsString("+ Create warehouse")));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void hidesActionsThatAdministratorCannotPerform() throws Exception {
+        mockMvc.perform(get("/app/admin/warehouse"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("+ Create warehouse"))));
+
+        mockMvc.perform(get("/app/admin/accounts"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("value=\"ADMIN\""))));
     }
 
     private UsernamePasswordAuthenticationToken authentication(String role) {
