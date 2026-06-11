@@ -69,12 +69,12 @@ public class WarehouseLayoutCalculationService {
 
     /**
      * Координата X входу в aisle.
-     *
+     * <p>
      * Логіка MVP:
      * - стартова точка оператора: (0, 0)
      * - X — рух по головному коридору
      * - Y — рух всередину aisle
-     *
+     * <p>
      * Перед першим aisle є одинарний ряд біля стіни.
      * Далі між aisle повторюється блок:
      * aisle width + два back-to-back rack rows.

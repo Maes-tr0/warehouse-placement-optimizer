@@ -2,9 +2,9 @@ package com.nikitaopara.warehouseoptimizer.putaway.container.service;
 
 import com.nikitaopara.warehouseoptimizer.account.model.User;
 import com.nikitaopara.warehouseoptimizer.auth.service.AuthenticatedUserService;
-import com.nikitaopara.warehouseoptimizer.putaway.article.dto.ArticleResponse;
-import com.nikitaopara.warehouseoptimizer.putaway.article.dto.CreateArticlesBatchRequest;
-import com.nikitaopara.warehouseoptimizer.putaway.article.dto.CreateArticlesBatchResponse;
+import com.nikitaopara.warehouseoptimizer.cache.config.CacheNames;
+import com.nikitaopara.warehouseoptimizer.movement.model.ContainerMovementType;
+import com.nikitaopara.warehouseoptimizer.movement.service.ContainerMovementService;
 import com.nikitaopara.warehouseoptimizer.putaway.article.model.Article;
 import com.nikitaopara.warehouseoptimizer.putaway.article.service.ArticleDataService;
 import com.nikitaopara.warehouseoptimizer.putaway.container.dto.*;
@@ -14,15 +14,12 @@ import com.nikitaopara.warehouseoptimizer.warehouse.model.StoragePlace;
 import com.nikitaopara.warehouseoptimizer.warehouse.model.StoragePlaceStatus;
 import com.nikitaopara.warehouseoptimizer.warehouse.model.Warehouse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -33,6 +30,7 @@ public class ContainerService {
     private final ContainerDataService containerDataService;
     private final ContainerValidationService containerValidationService;
     private final ContainerDimensionCalculationService dimensionCalculationService;
+    private final ContainerMovementService movementService;
 
     @Transactional
     public ContainerResponse receiveContainer(ReceiveContainerRequest request) {
@@ -76,6 +74,7 @@ public class ContainerService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = CacheNames.DEMAND_ANALYTICS, allEntries = true)
     public ContainerResponse updateContainer(String containerNumber, UpdateContainerRequest request) {
         User actor = authenticatedUserService.getCurrentUser();
 
@@ -109,6 +108,7 @@ public class ContainerService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = CacheNames.DEMAND_ANALYTICS, allEntries = true)
     public ContainerResponse placeContainer(String containerNumber, PlaceContainerRequest request) {
         User actor = authenticatedUserService.getCurrentUser();
 
@@ -128,10 +128,21 @@ public class ContainerService {
 
         Container savedContainer = containerDataService.save(container);
 
+        movementService.recordOperationalMovement(
+                savedContainer,
+                null,
+                null,
+                storagePlace,
+                savedContainer.getQuantity(),
+                ContainerMovementType.PUTAWAY,
+                actor
+        );
+
         return ContainerResponse.from(savedContainer);
     }
 
     @Transactional
+    @CacheEvict(cacheNames = CacheNames.DEMAND_ANALYTICS, allEntries = true)
     public ContainerResponse mergeContainer(String sourceContainerNumber, MergeContainerRequest request) {
         User actor = authenticatedUserService.getCurrentUser();
 
@@ -166,15 +177,28 @@ public class ContainerService {
         targetContainer.setWeightKg(mergedWeightKg);
         targetContainer.setHeightMm(mergedHeightMm);
 
+        int movedQuantity = sourceContainer.getQuantity();
+        StoragePlace targetStoragePlace = targetContainer.getCurrentStoragePlace();
         sourceContainer.markAsMergedInto(targetContainer);
 
         containerDataService.save(targetContainer);
         Container savedSourceContainer = containerDataService.save(sourceContainer);
 
+        movementService.recordOperationalMovement(
+                savedSourceContainer,
+                targetContainer,
+                null,
+                targetStoragePlace,
+                movedQuantity,
+                ContainerMovementType.MERGE,
+                actor
+        );
+
         return ContainerResponse.from(savedSourceContainer);
     }
 
     @Transactional
+    @CacheEvict(cacheNames = CacheNames.DEMAND_ANALYTICS, allEntries = true)
     public ContainerResponse removeContainer(String containerNumber) {
         User actor = authenticatedUserService.getCurrentUser();
 
@@ -191,6 +215,16 @@ public class ContainerService {
         container.markAsRemoved();
 
         Container savedContainer = containerDataService.save(container);
+
+        movementService.recordOperationalMovement(
+                savedContainer,
+                null,
+                storagePlace,
+                null,
+                savedContainer.getQuantity(),
+                ContainerMovementType.REMOVAL,
+                actor
+        );
 
         return ContainerResponse.from(savedContainer);
     }

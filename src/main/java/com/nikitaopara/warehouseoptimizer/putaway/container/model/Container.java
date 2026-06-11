@@ -68,6 +68,9 @@ public class Container {
     @Column(name = "received_at", nullable = false)
     private LocalDateTime receivedAt;
 
+    @Column(name = "optimization_reservation_code", length = 100)
+    private String optimizationReservationCode;
+
     @Version
     @Column(nullable = false)
     private Long version;
@@ -115,6 +118,32 @@ public class Container {
         return this.status == ContainerStatus.REMOVED;
     }
 
+    public boolean isReservedForOptimization() {
+        return optimizationReservationCode != null;
+    }
+
+    public boolean isReservedForOptimizationPlan(String planCode) {
+        return Objects.equals(optimizationReservationCode, planCode);
+    }
+
+    public void reserveForOptimization(String planCode) {
+        if (planCode == null || planCode.isBlank()) {
+            throw new IllegalArgumentException("Optimization plan code is required for reservation");
+        }
+
+        if (isReservedForOptimization() && !isReservedForOptimizationPlan(planCode)) {
+            throw new IllegalStateException("Container is reserved by another optimization plan");
+        }
+
+        optimizationReservationCode = planCode;
+    }
+
+    public void releaseOptimizationReservation(String planCode) {
+        if (isReservedForOptimizationPlan(planCode)) {
+            optimizationReservationCode = null;
+        }
+    }
+
     public boolean isFull() {
         if (article == null || article.getMaxQuantityPerPallet() == null || quantity == null) {
             return false;
@@ -144,6 +173,14 @@ public class Container {
     public void markAsStored(StoragePlace storagePlace) {
         this.currentStoragePlace = storagePlace;
         this.status = ContainerStatus.STORED;
+    }
+
+    public void relocateTo(StoragePlace storagePlace) {
+        if (!isStored()) {
+            throw new IllegalStateException("Only stored container can be relocated");
+        }
+
+        this.currentStoragePlace = storagePlace;
     }
 
     public void markAsMergedInto(Container targetContainer) {

@@ -1,8 +1,8 @@
 # Warehouse Placement Optimizer
 
-Warehouse Placement Optimizer is a Java/Spring Boot web application for warehouse layout generation, container receiving, and putaway operations.
+Warehouse Placement Optimizer is a Java/Spring Boot web application for warehouse layout generation, container receiving, putaway operations, and learned demand forecasting.
 
-The main goal of the project is to reduce warehouse picking and placement time by organizing pallet storage more intelligently. The current version implements the base warehouse setup and operator putaway flow. Future versions will add placement recommendation logic and AI-based demand prediction.
+The main goal of the project is to reduce warehouse picking and placement time by organizing pallet storage more intelligently. The current version implements warehouse setup, operator putaway, relocation recommendations, and Java-based ML demand prediction.
 
 ---
 
@@ -46,22 +46,34 @@ Implemented:
 * merge-first placement recommendations;
 * placement recommendation approval, rejection, and expiration;
 * demand history import;
+* seasonal and recency-weighted demand scoring;
+* Tribuo CART demand forecast training and model versioning;
+* scheduled retraining with chronological validation and baseline protection;
+* scheduled warehouse optimization assessments;
+* draft optimization plans with merge, move, and buffered swap steps;
+* scan-validated relocation execution;
+* immutable container movement history;
+* graph-based warehouse routing with Dijkstra shortest paths;
+* transactional resource reservations for approved relocation plans;
+* transactional outbox and optional Kafka event delivery;
+* optional Elasticsearch audit indexing and search;
+* optional Redis caching and distributed scheduler locks;
+* Prometheus metrics, structured logs, correlation IDs, and outbox health;
+* optional e-mail notifications for optimization recommendations;
+* responsive browser control center covering admin and operator workflows;
 * Flyway database migrations.
 
 Not implemented yet:
 
-* AI/ML demand prediction;
 * order picking flow;
-* movement history;
 * advanced warehouse layout types;
-* automatic warehouse re-optimization;
-* real UI/browser scanner interface.
+* hardware scanner integration beyond keyboard-compatible barcode input.
 
 ---
 
 ## Technology Stack
 
-* Java 17
+* Java 26
 * Spring Boot
 * Spring Web
 * Spring Security
@@ -69,8 +81,83 @@ Not implemented yet:
 * Hibernate
 * PostgreSQL
 * Flyway
+* Tribuo 4.3.2
+* Redis
+* Apache Kafka
+* Elasticsearch
+* Micrometer / Prometheus
 * Maven
 * Docker Compose
+
+---
+
+## Enterprise Infrastructure
+
+Start local infrastructure:
+
+```bash
+docker compose up -d
+```
+
+PostgreSQL is always used by the application. The additional integrations are feature-flagged:
+
+```bash
+KAFKA_EVENTS_ENABLED=true
+REDIS_CACHE_ENABLED=true
+ELASTICSEARCH_AUDIT_ENABLED=true
+EMAIL_NOTIFICATIONS_ENABLED=true
+EMAIL_NOTIFICATION_RECIPIENTS=admin@example.com
+```
+
+When all event features are enabled, container movements and optimization assessments are written to the PostgreSQL outbox, delivered to Kafka, indexed in Elasticsearch, and optimization recommendations can produce e-mail notifications. Mailpit receives local SMTP mail on port `1025`; its browser inbox is available at `http://localhost:8025`.
+
+Operational endpoints:
+
+```text
+GET /actuator/health
+GET /actuator/prometheus
+GET /admin/audit/events?warehouseCode=WH-1
+GET /admin/warehouses/{warehouseId}/routes/storage-places/{storagePlaceCode}
+```
+
+---
+
+## Browser Interface
+
+The browser interface is rendered by Spring Boot and Thymeleaf. Do not open files
+from `src/main/resources/templates` directly and do not use the IntelliJ built-in
+web server on port `63342`. Those files are server-side templates, so direct file
+preview cannot load the application CSS, process authentication, or call backend
+endpoints.
+
+Start PostgreSQL, then run the application with the datasource variables used by
+your local environment. For the default `compose.yaml` configuration:
+
+```bash
+docker compose up -d postgres
+SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/warehouse_optimizer \
+SPRING_DATASOURCE_USERNAME=postgres \
+SPRING_DATASOURCE_PASSWORD=postgres \
+./mvnw spring-boot:run
+```
+
+Open only this application URL:
+
+```text
+http://localhost:8080/login
+```
+
+The interface uses Spring Security form login and a server-side HTTP session. After
+authentication, administrators are redirected to the admin portal and operators
+to the operator portal. API requests made by the portal use the same authenticated
+session; the browser never stores the account password.
+
+The admin portal covers warehouse layout and routes, article and pallet management,
+demand history and Tribuo models, optimization assessments and relocation plans,
+and account administration. The operator portal covers receiving, placement,
+scan-confirmed relocation execution, and pallet inventory.
+
+Admin sections require `ROOT_ADMIN` or `ADMIN`. Receiving, placement, and relocation execution are also available to `OPERATOR` users according to the backend security rules.
 
 ---
 
@@ -663,6 +750,10 @@ V3__create_putaway_tables.sql
 V4__create_placement_recommendations_table.sql
 V5__create_demand_history_tables.sql
 V6__add_placement_recommendation_expiration.sql
+V7__create_warehouse_optimization_assessments.sql
+V8__create_warehouse_optimization_plans.sql
+V9__create_container_movements.sql
+V10__create_demand_forecast_models.sql
 ```
 
 ### V1
@@ -701,6 +792,14 @@ Creates demand history tables:
 ### V6
 
 Adds recommendation expiration and active reservation constraints.
+
+### V7-V9
+
+Create optimization assessments, relocation plans, scan-validated steps, and immutable container movement history.
+
+### V10
+
+Creates versioned demand forecast model storage, validation metrics, and the serialized Tribuo model artifact.
 
 ---
 
@@ -780,11 +879,9 @@ Current tested flow:
 
 Current implementation does not yet support:
 
-* AI/ML demand prediction;
 * order picking optimization;
-* demand-aware placement scoring;
-* movement history;
-* automatic warehouse re-optimization;
+* learning from measured picking duration;
+* obstacle-aware graph routing between storage places;
 * multiple containers in one storage place;
 * mixed articles in one storage place;
 * multiple warehouse layout strategies;
@@ -794,18 +891,156 @@ Current implementation does not yet support:
 
 ---
 
-## Planned Next Step
+## Warehouse Optimization Workflow
 
-The next planned development stage is demand analytics and demand-aware placement scoring.
+The optimizer uses a hybrid demand model. A validated Tribuo CART regression model
+predicts article demand for the next 14 completed days. Articles without enough
+history and warehouses without an active ML model automatically use the explainable
+recency and seasonality baseline.
 
-Expected recommendation logic:
+Default thresholds:
 
-1. Check if the container can be merged into an existing stored container with the same article.
-2. If merge is possible, recommend merge.
-3. If merge is not possible, find available storage places where the container fits.
-4. Score storage places by distance and future demand factors.
-5. Return the best recommended action.
+* below `60%`: optimization is recommended;
+* `85%` or higher: relocation planning stops;
+* the thresholds are configurable through environment variables.
 
-Initial implementation will be rule-based.
+Workflow:
 
-Future implementation will include AI/ML-based demand prediction.
+1. The scheduled analyzer evaluates active warehouses every day at `02:00`.
+2. An administrator creates a draft plan from an assessment below the threshold.
+3. The planner first consolidates compatible partial pallets.
+4. It then creates direct moves or three-step swaps through an available buffer place.
+5. An administrator approves the plan.
+6. An operator scans the expected source container and target place or merge container.
+7. Each completed step updates inventory and appends an immutable movement record.
+
+Main endpoints:
+
+```text
+POST /admin/warehouses/{warehouseId}/optimization-assessments
+GET  /admin/warehouses/{warehouseId}/optimization-assessments/latest
+POST /admin/optimization-plans/assessments/{assessmentId}
+POST /admin/optimization-plans/{planCode}/approve
+GET  /operator/optimization-plans/{planCode}/steps/current
+POST /operator/optimization-plans/{planCode}/steps/current/complete
+GET  /admin/container-movements?warehouseId={warehouseId}
+```
+
+The next modeling stage is to record real picking operations and use measured route
+duration to train and validate travel-time models.
+
+---
+
+## Demand Forecast Training
+
+The training dataset is built from `order_demand_items`. Every article is converted
+into a continuous daily series, so days without orders are represented as zero demand.
+
+Current features include:
+
+* quantity lags for 1, 7, 14, and 28 days;
+* rolling quantity totals and means for 7, 28, and 90 days;
+* active demand days and order count;
+* days since the last demand and article history age;
+* short-term versus long-term trend;
+* cyclic day-of-week and day-of-year seasonality.
+
+The target is the total article quantity ordered during the following 14 days. The
+last 60 days are reserved for chronological validation. A gap equal to the forecast
+horizon prevents training labels from overlapping the validation period.
+
+The candidate model is compared with a rolling 28-day mean baseline. It becomes
+`ACTIVE` only when validation MAE improves by at least 2% by default. Otherwise it is
+stored as `REJECTED`, and the previous active model remains in use.
+
+Retraining rules:
+
+* the scheduler checks active warehouses every day at `03:30`;
+* training uses completed days only;
+* normal retraining cannot happen more often than every 30 days;
+* 200 newly imported order item observations can trigger retraining after that interval;
+* retraining is forced after 90 days;
+* a failed or rejected warehouse is retried after the minimum interval;
+* a training attempt left stale for 24 hours can be retried.
+
+All thresholds and intervals are configurable with `DEMAND_FORECAST_*` environment
+variables.
+
+### Postman Requests
+
+Use Basic Auth with an `ADMIN` or `ROOT_ADMIN` account. These requests do not require
+a JSON body.
+
+Train manually:
+
+```http
+POST http://localhost:8080/admin/warehouses/1/demand-forecast-models/train
+```
+
+Get the latest training attempt:
+
+```http
+GET http://localhost:8080/admin/warehouses/1/demand-forecast-models/latest
+```
+
+Get all model versions and their metrics:
+
+```http
+GET http://localhost:8080/admin/warehouses/1/demand-forecast-models
+```
+
+Manual training returns `400 Bad Request` when there are fewer than the configured
+training or validation samples. Import more historical orders before retrying.
+
+### Full Postman AI Cycle
+
+Import these files into Postman:
+
+```text
+postman/warehouse-optimization-ai-cycle.postman_collection.json
+postman/warehouse-optimization-ai-local.postman_environment.json
+```
+
+Set the same root administrator credentials in the imported Postman environment and
+when starting the application. For a new local database, use for example:
+
+```bash
+APP_ADMIN_EMAIL=admin@example.com \
+APP_ADMIN_PASSWORD='local-test-password' \
+APP_ADMIN_FULL_NAME='Local Root Admin' \
+SPRING_PROFILES_ACTIVE=postman \
+./mvnw spring-boot:run
+```
+
+Then set these environment values in Postman and select the environment in the top
+right corner before opening Collection Runner:
+
+```text
+rootAdminEmail = admin@example.com
+rootAdminPassword = local-test-password
+```
+
+The AI collection also accepts the older aliases `username` and `password`, but the
+standard project environment uses `rootAdminEmail` and `rootAdminPassword`.
+
+If the database already contains a `ROOT_ADMIN`, bootstrap variables do not replace
+that account. Use the existing account credentials or reset the local database first.
+
+The profile checks warehouse optimization every 10 seconds and demand model training
+every 15 seconds. These fast schedules are test-only and do not change the default
+production schedule.
+
+Run the entire collection through Postman Collection Runner, not by sending only one
+request. Runner is required because the collection loops through all container
+placements and every relocation step automatically.
+
+The full cycle creates:
+
+* a warehouse with 576 storage places;
+* 12 articles and 16 physical containers;
+* 540 days, 540 orders, and 6480 order items;
+* a trained Tribuo model with validation metrics;
+* an intentionally inefficient initial placement;
+* an optimization assessment and relocation plan;
+* scan-compatible execution of all relocation steps;
+* a final assessment and immutable movement audit history.

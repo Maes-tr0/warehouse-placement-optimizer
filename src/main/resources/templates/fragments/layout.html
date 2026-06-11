@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:fragment="head(title)">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#101c17">
+    <title th:text="${title + ' · Smart Warehouse'}">Smart Warehouse</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<aside class="sidebar" th:fragment="adminSidebar(active)" id="sidebar">
+    <a class="brand" href="/app/admin/dashboard"><span class="brand-mark">WO</span><span><b>Smart Warehouse</b><small>admin portal</small></span></a>
+    <nav class="nav" aria-label="Admin navigation">
+        <p class="nav-label">Control</p>
+        <a class="nav-item" th:classappend="${active == 'dashboard'} ? ' active'" href="/app/admin/dashboard"><span>⌂</span>Dashboard</a>
+        <a class="nav-item" th:classappend="${active == 'warehouse'} ? ' active'" href="/app/admin/warehouse"><span>▦</span>Warehouse and locations</a>
+        <a class="nav-item" th:classappend="${active == 'inventory'} ? ' active'" href="/app/admin/inventory"><span>□</span>Articles and pallets</a>
+        <p class="nav-label">Analytics</p>
+        <a class="nav-item" th:classappend="${active == 'demand'} ? ' active'" href="/app/admin/demand"><span>↗</span>Demand and model</a>
+        <a class="nav-item" th:classappend="${active == 'optimization'} ? ' active'" href="/app/admin/optimization"><span>%</span>Optimization</a>
+        <p class="nav-label">System</p>
+        <a class="nav-item" th:classappend="${active == 'accounts'} ? ' active'" href="/app/admin/accounts"><span>●</span>Users</a>
+        <a class="nav-item operator-switch" href="/app/operator/dashboard"><span>→</span>Operator mode</a>
+    </nav>
+    <div class="sidebar-foot"><span class="status-dot connected"></span><span><b sec:authentication="name">user@example.com</b><small>Session active</small></span></div>
+</aside>
+
+<aside class="sidebar operator-sidebar" th:fragment="operatorSidebar(active)" id="sidebar">
+    <a class="brand" href="/app/operator/dashboard"><span class="brand-mark">WO</span><span><b>Smart Warehouse</b><small>operator workspace</small></span></a>
+    <nav class="nav" aria-label="Operator navigation">
+        <p class="nav-label">Work shift</p>
+        <a class="nav-item" th:classappend="${active == 'dashboard'} ? ' active'" href="/app/operator/dashboard"><span>⌂</span>My tasks</a>
+        <a class="nav-item" th:classappend="${active == 'receiving'} ? ' active'" href="/app/operator/receiving"><span>＋</span>Receive pallet</a>
+        <a class="nav-item" th:classappend="${active == 'placement'} ? ' active'" href="/app/operator/placement"><span>→</span>Place pallet</a>
+        <a class="nav-item" th:classappend="${active == 'relocation'} ? ' active'" href="/app/operator/relocation"><span>✓</span>Execute relocation</a>
+        <a class="nav-item" th:classappend="${active == 'inventory'} ? ' active'" href="/app/operator/inventory"><span>□</span>Warehouse pallets</a>
+        <a class="nav-item admin-switch" sec:authorize="hasAnyRole('ROOT_ADMIN','ADMIN')" href="/app/admin/dashboard"><span>←</span>Admin portal</a>
+    </nav>
+    <div class="sidebar-foot"><span class="status-dot connected"></span><span><b sec:authentication="name">operator@example.com</b><small>Operator signed in</small></span></div>
+</aside>
+
+<header class="topbar" th:fragment="topbar(title, subtitle)">
+    <button class="icon-button menu-button" id="menuButton" aria-label="Menu">☰</button>
+    <div class="page-heading"><p th:text="${subtitle}">WORKSPACE</p><h1 th:text="${title}">Page</h1></div>
+    <div class="topbar-actions">
+        <label class="warehouse-picker" data-warehouse-picker><span>Active warehouse</span><select id="warehouseSelect"><option value="">Loading...</option></select></label>
+        <button class="button ghost" type="button" data-refresh>Refresh</button>
+        <form action="/logout" method="post"><button class="user-button" type="submit"><span>U</span><b>Sign out</b></button></form>
+    </div>
+</header>
+</body>
+</html>

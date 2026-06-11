@@ -21,15 +21,15 @@ public class PlacementTimeEstimationService {
             throw new IllegalArgumentException("Storage place is required for time estimation");
         }
 
-        int travelTimeSeconds = calculateTravelTimeSeconds(storagePlace);
+        int travelTimeSeconds = estimateHorizontalTravelTimeSeconds(
+                storagePlace.getDistanceFromEntryMm()
+        );
         int handlingTimeSeconds = calculateHandlingTimeSeconds(storagePlace);
 
         return travelTimeSeconds + handlingTimeSeconds;
     }
 
-    private int calculateTravelTimeSeconds(StoragePlace storagePlace) {
-        Integer distanceFromEntryMm = storagePlace.getDistanceFromEntryMm();
-
+    public int estimateHorizontalTravelTimeSeconds(Integer distanceFromEntryMm) {
         if (distanceFromEntryMm == null || distanceFromEntryMm <= 0) {
             return 0;
         }
@@ -37,6 +37,18 @@ public class PlacementTimeEstimationService {
         return (int) Math.ceil(
                 (double) distanceFromEntryMm / HORIZONTAL_TRAVEL_SPEED_MM_PER_SECOND
         );
+    }
+
+    public Integer estimatePlacementTimeSeconds(
+            StoragePlace storagePlace,
+            Integer routeDistanceMm
+    ) {
+        if (storagePlace == null) {
+            throw new IllegalArgumentException("Storage place is required for time estimation");
+        }
+
+        return estimateHorizontalTravelTimeSeconds(routeDistanceMm)
+                + calculateHandlingTimeSeconds(storagePlace);
     }
 
     private int calculateHandlingTimeSeconds(StoragePlace storagePlace) {
