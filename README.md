@@ -124,13 +124,38 @@ GET /admin/warehouses/{warehouseId}/routes/storage-places/{storagePlaceCode}
 
 ## Browser Interface
 
-Run the application and open:
+The browser interface is rendered by Spring Boot and Thymeleaf. Do not open files
+from `src/main/resources/templates` directly and do not use the IntelliJ built-in
+web server on port `63342`. Those files are server-side templates, so direct file
+preview cannot load the application CSS, process authentication, or call backend
+endpoints.
 
-```text
-http://localhost:8080/
+Start PostgreSQL, then run the application with the datasource variables used by
+your local environment. For the default `compose.yaml` configuration:
+
+```bash
+docker compose up -d postgres
+SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/warehouse_optimizer \
+SPRING_DATASOURCE_USERNAME=postgres \
+SPRING_DATASOURCE_PASSWORD=postgres \
+./mvnw spring-boot:run
 ```
 
-The interface uses the existing Basic Auth API. Credentials are kept only in the current browser tab. Available workspaces cover warehouse layout and routes, article and container management, receiving and placement, demand history and Tribuo models, optimization assessments and relocation plans, scan-confirmed execution, movements, Elasticsearch audit, accounts, system health, and a complete API console.
+Open only this application URL:
+
+```text
+http://localhost:8080/login
+```
+
+The interface uses Spring Security form login and a server-side HTTP session. After
+authentication, administrators are redirected to the admin portal and operators
+to the operator portal. API requests made by the portal use the same authenticated
+session; the browser never stores the account password.
+
+The admin portal covers warehouse layout and routes, article and pallet management,
+demand history and Tribuo models, optimization assessments and relocation plans,
+and account administration. The operator portal covers receiving, placement,
+scan-confirmed relocation execution, and pallet inventory.
 
 Admin sections require `ROOT_ADMIN` or `ADMIN`. Receiving, placement, and relocation execution are also available to `OPERATOR` users according to the backend security rules.
 

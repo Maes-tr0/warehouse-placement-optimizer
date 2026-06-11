@@ -1,22 +1,29 @@
 <!doctype html>
-<html lang="uk" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head('Вхід')}"></head>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Sign in')}">
+    <meta charset="utf-8">
+    <script>
+        if (location.port === "63342" || location.pathname.includes("/templates/")) {
+            location.replace("http://localhost:8080/login");
+        }
+    </script>
+</head>
 <body class="login-page">
 <main class="login-layout">
     <section class="login-story">
-        <a class="brand login-brand" href="/login"><span class="brand-mark">WO</span><span><b>Розумний склад</b><small>Warehouse Placement Optimizer</small></span></a>
-        <div><p class="eyebrow">ЄДИНА СИСТЕМА СКЛАДУ</p><h1>Менше зайвих кроків.<br>Швидше зібрані замовлення.</h1><p>Адміністратор контролює структуру, попит та оптимізацію. Оператор отримує чіткі покрокові завдання для кожної палети.</p></div>
-        <div class="login-benefits"><article><b>01</b><span>Приймання та розміщення</span></article><article><b>02</b><span>Прогноз популярності товарів</span></article><article><b>03</b><span>Керовані перестановки палет</span></article></div>
+        <a class="brand login-brand" href="/login"><span class="brand-mark">WO</span><span><b>Smart Warehouse</b><small>Warehouse Placement Optimizer</small></span></a>
+        <div><p class="eyebrow">ONE WAREHOUSE SYSTEM</p><h1>Fewer unnecessary steps.<br>Faster order picking.</h1><p>Administrators control layout, demand, and optimization. Operators receive clear step-by-step tasks for every pallet.</p></div>
+        <div class="login-benefits"><article><b>01</b><span>Receiving and placement</span></article><article><b>02</b><span>Article demand forecasting</span></article><article><b>03</b><span>Guided pallet relocations</span></article></div>
     </section>
     <section class="login-panel">
         <form action="/login" method="post" class="login-card">
-            <div><p class="eyebrow">БЕЗПЕЧНИЙ ВХІД</p><h2>Увійдіть у систему</h2><p>Після входу система автоматично відкриє інтерфейс відповідно до вашої ролі.</p></div>
-            <div class="alert error" th:if="${param.error}"><b>Не вдалося увійти</b><span>Перевірте email, пароль і статус облікового запису.</span></div>
-            <div class="alert success" th:if="${param.logout}"><b>Ви вийшли із системи</b><span>Сесію безпечно завершено.</span></div>
+            <div><p class="eyebrow">SECURE SIGN IN</p><h2>Sign in to the system</h2><p>After sign-in, the system opens the portal assigned to your role.</p></div>
+            <div class="alert error" th:if="${param.error}"><b>Sign-in failed</b><span>Check your email, password, and account status.</span></div>
+            <div class="alert success" th:if="${param.logout}"><b>You have signed out</b><span>Your session has been closed securely.</span></div>
             <label>Email<input name="email" type="email" autocomplete="username" placeholder="admin@example.com" required autofocus></label>
-            <label>Пароль<input name="password" type="password" autocomplete="current-password" placeholder="Ваш пароль" required></label>
-            <button class="button accent wide login-submit" type="submit">Увійти до робочого кабінету</button>
-            <small class="login-note">Облікові записи створює головний адміністратор.</small>
+            <label>Password<input name="password" type="password" autocomplete="current-password" placeholder="Your password" required></label>
+            <button class="button accent wide login-submit" type="submit">Sign in to workspace</button>
+            <small class="login-note">Accounts are created by the root administrator.</small>
         </form>
     </section>
 </main>
