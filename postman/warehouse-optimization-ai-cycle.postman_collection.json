@@ -26,13 +26,6 @@
       "script": {
         "type": "text/javascript",
         "exec": [
-          "const rootAdminEmail = pm.environment.get('rootAdminEmail') || pm.environment.get('username');",
-          "const rootAdminPassword = pm.environment.get('rootAdminPassword') || pm.environment.get('password');",
-          "if (!rootAdminEmail || !rootAdminPassword || rootAdminPassword === 'replace-with-your-password') {",
-          "  throw new Error('Select a local environment and set real rootAdminEmail/rootAdminPassword credentials before running the collection.');",
-          "}",
-          "pm.variables.set('rootAdminEmail', rootAdminEmail);",
-          "pm.variables.set('rootAdminPassword', rootAdminPassword);",
           "if (!pm.collectionVariables.get('runId')) {",
           "  const runId = Date.now().toString();",
           "  pm.collectionVariables.set('runId', runId);",
@@ -117,7 +110,7 @@
             "exec": [
               "const runId = pm.collectionVariables.get('runId');",
               "const articles = Array.from({length: 12}, (_, index) => ({",
-              "  articleNumber: `SKU-${runId}-${String(index + 1).padStart(3, '0')}` ,",
+              "  articleNumber: `${runId}${String(index + 1).padStart(3, '0')}` ,",
               "  name: `AI Test Article ${index + 1}` ,",
               "  unitType: index % 3 === 0 ? 'BOX' : 'PCS',",
               "  unitWidthMm: 200,",
