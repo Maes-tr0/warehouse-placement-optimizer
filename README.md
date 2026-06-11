@@ -53,6 +53,13 @@ Implemented:
 * draft optimization plans with merge, move, and buffered swap steps;
 * scan-validated relocation execution;
 * immutable container movement history;
+* graph-based warehouse routing with Dijkstra shortest paths;
+* transactional resource reservations for approved relocation plans;
+* transactional outbox and optional Kafka event delivery;
+* optional Elasticsearch audit indexing and search;
+* optional Redis caching and distributed scheduler locks;
+* Prometheus metrics, structured logs, correlation IDs, and outbox health;
+* optional e-mail notifications for optimization recommendations;
 * Flyway database migrations.
 
 Not implemented yet:
@@ -74,8 +81,43 @@ Not implemented yet:
 * PostgreSQL
 * Flyway
 * Tribuo 4.3.2
+* Redis
+* Apache Kafka
+* Elasticsearch
+* Micrometer / Prometheus
 * Maven
 * Docker Compose
+
+---
+
+## Enterprise Infrastructure
+
+Start local infrastructure:
+
+```bash
+docker compose up -d
+```
+
+PostgreSQL is always used by the application. The additional integrations are feature-flagged:
+
+```bash
+KAFKA_EVENTS_ENABLED=true
+REDIS_CACHE_ENABLED=true
+ELASTICSEARCH_AUDIT_ENABLED=true
+EMAIL_NOTIFICATIONS_ENABLED=true
+EMAIL_NOTIFICATION_RECIPIENTS=admin@example.com
+```
+
+When all event features are enabled, container movements and optimization assessments are written to the PostgreSQL outbox, delivered to Kafka, indexed in Elasticsearch, and optimization recommendations can produce e-mail notifications. Mailpit receives local SMTP mail on port `1025`; its browser inbox is available at `http://localhost:8025`.
+
+Operational endpoints:
+
+```text
+GET /actuator/health
+GET /actuator/prometheus
+GET /admin/audit/events?warehouseCode=WH-1
+GET /admin/warehouses/{warehouseId}/routes/storage-places/{storagePlaceCode}
+```
 
 ---
 
