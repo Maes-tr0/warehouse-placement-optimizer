@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="uk" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:fragment="head(title)">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#101c17">
+    <title th:text="${title + ' · Розумний склад'}">Розумний склад</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<aside class="sidebar" th:fragment="adminSidebar(active)" id="sidebar">
+    <a class="brand" href="/app/admin/dashboard"><span class="brand-mark">WO</span><span><b>Розумний склад</b><small>панель адміністратора</small></span></a>
+    <nav class="nav" aria-label="Навігація адміністратора">
+        <p class="nav-label">Контроль</p>
+        <a class="nav-item" th:classappend="${active == 'dashboard'} ? ' active'" href="/app/admin/dashboard"><span>⌂</span>Огляд</a>
+        <a class="nav-item" th:classappend="${active == 'warehouse'} ? ' active'" href="/app/admin/warehouse"><span>▦</span>Склад і локації</a>
+        <a class="nav-item" th:classappend="${active == 'inventory'} ? ' active'" href="/app/admin/inventory"><span>□</span>Товари та палети</a>
+        <p class="nav-label">Аналітика</p>
+        <a class="nav-item" th:classappend="${active == 'demand'} ? ' active'" href="/app/admin/demand"><span>↗</span>Попит і модель</a>
+        <a class="nav-item" th:classappend="${active == 'optimization'} ? ' active'" href="/app/admin/optimization"><span>%</span>Оптимізація</a>
+        <p class="nav-label">Система</p>
+        <a class="nav-item" th:classappend="${active == 'accounts'} ? ' active'" href="/app/admin/accounts"><span>●</span>Користувачі</a>
+        <a class="nav-item operator-switch" href="/app/operator/dashboard"><span>→</span>Режим оператора</a>
+    </nav>
+    <div class="sidebar-foot"><span class="status-dot connected"></span><span><b sec:authentication="name">user@example.com</b><small>Сесія активна</small></span></div>
+</aside>
+
+<aside class="sidebar operator-sidebar" th:fragment="operatorSidebar(active)" id="sidebar">
+    <a class="brand" href="/app/operator/dashboard"><span class="brand-mark">WO</span><span><b>Розумний склад</b><small>робоче місце оператора</small></span></a>
+    <nav class="nav" aria-label="Навігація оператора">
+        <p class="nav-label">Робоча зміна</p>
+        <a class="nav-item" th:classappend="${active == 'dashboard'} ? ' active'" href="/app/operator/dashboard"><span>⌂</span>Мої завдання</a>
+        <a class="nav-item" th:classappend="${active == 'receiving'} ? ' active'" href="/app/operator/receiving"><span>＋</span>Прийняти палету</a>
+        <a class="nav-item" th:classappend="${active == 'placement'} ? ' active'" href="/app/operator/placement"><span>→</span>Розмістити палету</a>
+        <a class="nav-item" th:classappend="${active == 'relocation'} ? ' active'" href="/app/operator/relocation"><span>✓</span>Виконати перестановку</a>
+        <a class="nav-item" th:classappend="${active == 'inventory'} ? ' active'" href="/app/operator/inventory"><span>□</span>Палети на складі</a>
+        <a class="nav-item admin-switch" sec:authorize="hasAnyRole('ROOT_ADMIN','ADMIN')" href="/app/admin/dashboard"><span>←</span>Панель адміністратора</a>
+    </nav>
+    <div class="sidebar-foot"><span class="status-dot connected"></span><span><b sec:authentication="name">operator@example.com</b><small>Оператор у системі</small></span></div>
+</aside>
+
+<header class="topbar" th:fragment="topbar(title, subtitle)">
+    <button class="icon-button menu-button" id="menuButton" aria-label="Меню">☰</button>
+    <div class="page-heading"><p th:text="${subtitle}">РОБОЧА ЗОНА</p><h1 th:text="${title}">Сторінка</h1></div>
+    <div class="topbar-actions">
+        <label class="warehouse-picker" data-warehouse-picker><span>Активний склад</span><select id="warehouseSelect"><option value="">Завантаження...</option></select></label>
+        <button class="button ghost" type="button" data-refresh>Оновити</button>
+        <form action="/logout" method="post"><button class="user-button" type="submit"><span>U</span><b>Вийти</b></button></form>
+    </div>
+</header>
+</body>
+</html>
