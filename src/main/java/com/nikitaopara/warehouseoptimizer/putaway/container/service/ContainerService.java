@@ -1,6 +1,7 @@
 package com.nikitaopara.warehouseoptimizer.putaway.container.service;
 
 import com.nikitaopara.warehouseoptimizer.account.model.User;
+import com.nikitaopara.warehouseoptimizer.cache.config.CacheNames;
 import com.nikitaopara.warehouseoptimizer.auth.service.AuthenticatedUserService;
 import com.nikitaopara.warehouseoptimizer.movement.model.ContainerMovementType;
 import com.nikitaopara.warehouseoptimizer.movement.service.ContainerMovementService;
@@ -17,6 +18,7 @@ import com.nikitaopara.warehouseoptimizer.warehouse.model.StoragePlaceStatus;
 import com.nikitaopara.warehouseoptimizer.warehouse.model.Warehouse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -79,6 +81,7 @@ public class ContainerService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = CacheNames.DEMAND_ANALYTICS, allEntries = true)
     public ContainerResponse updateContainer(String containerNumber, UpdateContainerRequest request) {
         User actor = authenticatedUserService.getCurrentUser();
 
@@ -112,6 +115,7 @@ public class ContainerService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = CacheNames.DEMAND_ANALYTICS, allEntries = true)
     public ContainerResponse placeContainer(String containerNumber, PlaceContainerRequest request) {
         User actor = authenticatedUserService.getCurrentUser();
 
@@ -145,6 +149,7 @@ public class ContainerService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = CacheNames.DEMAND_ANALYTICS, allEntries = true)
     public ContainerResponse mergeContainer(String sourceContainerNumber, MergeContainerRequest request) {
         User actor = authenticatedUserService.getCurrentUser();
 
@@ -200,6 +205,7 @@ public class ContainerService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = CacheNames.DEMAND_ANALYTICS, allEntries = true)
     public ContainerResponse removeContainer(String containerNumber) {
         User actor = authenticatedUserService.getCurrentUser();
 

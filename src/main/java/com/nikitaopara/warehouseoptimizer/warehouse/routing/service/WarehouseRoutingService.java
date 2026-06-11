@@ -1,6 +1,7 @@
 package com.nikitaopara.warehouseoptimizer.warehouse.routing.service;
 
 import com.nikitaopara.warehouseoptimizer.common.error.ResourceNotFoundException;
+import com.nikitaopara.warehouseoptimizer.cache.config.CacheNames;
 import com.nikitaopara.warehouseoptimizer.putaway.placement.service.PlacementTimeEstimationService;
 import com.nikitaopara.warehouseoptimizer.warehouse.model.StoragePlace;
 import com.nikitaopara.warehouseoptimizer.warehouse.repository.StoragePlaceRepository;
@@ -9,6 +10,7 @@ import com.nikitaopara.warehouseoptimizer.warehouse.routing.dto.WarehouseRoutePo
 import com.nikitaopara.warehouseoptimizer.warehouse.routing.dto.WarehouseRouteResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -23,6 +25,10 @@ public class WarehouseRoutingService {
     private final PlacementTimeEstimationService timeEstimationService;
 
     @Transactional(readOnly = true)
+    @Cacheable(
+            cacheNames = CacheNames.WAREHOUSE_ROUTES,
+            key = "#warehouseId + ':' + #storagePlaceCode"
+    )
     public WarehouseRouteResponse getRoute(Long warehouseId, String storagePlaceCode) {
         if (!warehouseRepository.existsById(warehouseId)) {
             throw new ResourceNotFoundException("Warehouse not found: " + warehouseId);

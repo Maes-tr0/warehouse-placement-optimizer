@@ -11,7 +11,10 @@ import com.nikitaopara.warehouseoptimizer.warehouse.model.StoragePlaceStatus;
 import com.nikitaopara.warehouseoptimizer.warehouse.repository.StoragePlaceRepository;
 import com.nikitaopara.warehouseoptimizer.warehouse.repository.WarehouseRepository;
 import com.nikitaopara.warehouseoptimizer.common.error.ResourceNotFoundException;
+import com.nikitaopara.warehouseoptimizer.cache.config.CacheNames;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +32,10 @@ public class WarehouseService {
     private final StoragePlaceRepository storagePlaceRepository;
 
     @Transactional
+    @CacheEvict(cacheNames = {
+            CacheNames.WAREHOUSES,
+            CacheNames.WAREHOUSE_ROUTES
+    }, allEntries = true)
     public WarehouseResponse createWarehouse(CreateWarehouseRequest request) {
         User actor = authenticatedUserService.getCurrentUser();
 
@@ -42,11 +49,13 @@ public class WarehouseService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheNames.WAREHOUSES, key = "'all'")
     public List<WarehouseSummaryResponse> getWarehouses() {
         return warehouseRepository.findAllSummaries();
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheNames.WAREHOUSES, key = "#warehouseId")
     public WarehouseSummaryResponse getWarehouse(Long warehouseId) {
         return warehouseRepository.findSummaryById(warehouseId)
                 .orElseThrow(() -> new ResourceNotFoundException(

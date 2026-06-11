@@ -1,6 +1,7 @@
 package com.nikitaopara.warehouseoptimizer.demand.forecast.service;
 
 import com.nikitaopara.warehouseoptimizer.common.error.ResourceNotFoundException;
+import com.nikitaopara.warehouseoptimizer.cache.config.CacheNames;
 import com.nikitaopara.warehouseoptimizer.demand.forecast.config.DemandForecastProperties;
 import com.nikitaopara.warehouseoptimizer.demand.forecast.model.*;
 import com.nikitaopara.warehouseoptimizer.demand.forecast.repository.DemandForecastModelRepository;
@@ -11,6 +12,7 @@ import com.nikitaopara.warehouseoptimizer.warehouse.model.Warehouse;
 import com.nikitaopara.warehouseoptimizer.warehouse.repository.WarehouseRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -35,6 +37,7 @@ public class DemandForecastTrainingService {
     private final DemandForecastProperties properties;
 
     @Transactional
+    @CacheEvict(cacheNames = CacheNames.DEMAND_ANALYTICS, allEntries = true)
     public DemandForecastTrainingResult train(
             Long warehouseId,
             DemandForecastTrainingTrigger trigger

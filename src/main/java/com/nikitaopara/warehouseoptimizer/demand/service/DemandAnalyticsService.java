@@ -1,6 +1,7 @@
 package com.nikitaopara.warehouseoptimizer.demand.service;
 
 import com.nikitaopara.warehouseoptimizer.common.error.ResourceNotFoundException;
+import com.nikitaopara.warehouseoptimizer.cache.config.CacheNames;
 import com.nikitaopara.warehouseoptimizer.demand.dto.DemandArticleAnalyticsResponse;
 import com.nikitaopara.warehouseoptimizer.demand.forecast.model.DemandForecastScore;
 import com.nikitaopara.warehouseoptimizer.demand.forecast.service.DemandForecastScoringService;
@@ -15,6 +16,7 @@ import com.nikitaopara.warehouseoptimizer.putaway.container.repository.Container
 import com.nikitaopara.warehouseoptimizer.warehouse.repository.WarehouseRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -40,6 +42,10 @@ public class DemandAnalyticsService {
     private final OptimizationProperties optimizationProperties;
 
     @Transactional(readOnly = true)
+    @Cacheable(
+            cacheNames = CacheNames.DEMAND_ANALYTICS,
+            key = "'articles:' + #warehouseId + ':' + #from + ':' + #to"
+    )
     public List<DemandArticleAnalyticsResponse> getArticles(
             Long warehouseId,
             LocalDate from,
@@ -106,6 +112,10 @@ public class DemandAnalyticsService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(
+            cacheNames = CacheNames.DEMAND_ANALYTICS,
+            key = "'top:' + #warehouseId + ':' + #limit + ':' + #from + ':' + #to"
+    )
     public List<DemandArticleAnalyticsResponse> getTopArticles(
             Long warehouseId,
             int limit,
@@ -120,6 +130,10 @@ public class DemandAnalyticsService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(
+            cacheNames = CacheNames.DEMAND_ANALYTICS,
+            key = "'article:' + #warehouseId + ':' + #articleNumber + ':' + #from + ':' + #to"
+    )
     public DemandArticleAnalyticsResponse getArticle(
             Long warehouseId,
             String articleNumber,
