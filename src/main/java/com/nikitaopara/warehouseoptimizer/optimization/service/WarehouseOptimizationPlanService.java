@@ -140,9 +140,10 @@ public class WarehouseOptimizationPlanService {
         WarehouseOptimizationPlan plan = getPlanByCodeOrThrow(planCode);
 
         if (plan.getStatus() != OptimizationPlanStatus.DRAFT
-                && plan.getStatus() != OptimizationPlanStatus.APPROVED) {
+                && plan.getStatus() != OptimizationPlanStatus.APPROVED
+                && plan.getStatus() != OptimizationPlanStatus.IN_PROGRESS) {
             throw new IllegalArgumentException(
-                    "Only draft or approved optimization plan can be cancelled"
+                    "Only draft, approved or in-progress optimization plan can be cancelled"
             );
         }
 
