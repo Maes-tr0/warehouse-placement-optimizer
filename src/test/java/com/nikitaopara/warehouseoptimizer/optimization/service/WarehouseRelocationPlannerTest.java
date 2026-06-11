@@ -10,6 +10,11 @@ import com.nikitaopara.warehouseoptimizer.putaway.container.service.ContainerDim
 import com.nikitaopara.warehouseoptimizer.putaway.placement.service.PlacementTimeEstimationService;
 import com.nikitaopara.warehouseoptimizer.warehouse.model.StoragePlace;
 import com.nikitaopara.warehouseoptimizer.warehouse.model.StoragePlaceStatus;
+import com.nikitaopara.warehouseoptimizer.warehouse.model.Aisle;
+import com.nikitaopara.warehouseoptimizer.warehouse.model.RackRow;
+import com.nikitaopara.warehouseoptimizer.warehouse.routing.service.DijkstraWarehouseRouter;
+import com.nikitaopara.warehouseoptimizer.warehouse.routing.service.WarehouseGraphBuilder;
+import com.nikitaopara.warehouseoptimizer.warehouse.routing.service.WarehouseRouteCalculator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -33,6 +38,10 @@ class WarehouseRelocationPlannerTest {
                 new ContainerDimensionCalculationService(),
                 new PlacementTimeEstimationService(),
                 new WarehouseEfficiencyCalculator(),
+                new WarehouseRouteCalculator(
+                        new WarehouseGraphBuilder(),
+                        new DijkstraWarehouseRouter()
+                ),
                 properties
         );
     }
@@ -53,6 +62,38 @@ class WarehouseRelocationPlannerTest {
         assertThat(draft.steps()).hasSize(1);
         assertThat(draft.steps().getFirst().type()).isEqualTo(RelocationStepType.MOVE);
         assertThat(draft.steps().getFirst().toStoragePlaceId()).isEqualTo(near.getId());
+        assertThat(draft.projectedScorePercent()).isEqualByComparingTo("100.00");
+    }
+
+    @Test
+    void usesGraphDistanceInsteadOfStaleStoredDistance() {
+        Article article = article(1L, "POPULAR");
+        StoragePlace graphNear = routedPlace(
+                10L,
+                "GRAPH-NEAR",
+                1_000,
+                1_000,
+                9_000,
+                StoragePlaceStatus.AVAILABLE
+        );
+        StoragePlace graphFar = routedPlace(
+                11L,
+                "GRAPH-FAR",
+                8_000,
+                1_000,
+                1_000,
+                StoragePlaceStatus.OCCUPIED
+        );
+        Container container = container(20L, "C-1", article, 100, graphFar);
+
+        var draft = planner.createPlan(
+                List.of(container),
+                List.of(graphNear, graphFar),
+                Map.of(article.getId(), new ArticleDemandScore(article.getId(), 100, 100, 20))
+        );
+
+        assertThat(draft.steps()).hasSize(1);
+        assertThat(draft.steps().getFirst().toStoragePlaceId()).isEqualTo(graphNear.getId());
         assertThat(draft.projectedScorePercent()).isEqualByComparingTo("100.00");
     }
 
@@ -149,6 +190,39 @@ class WarehouseRelocationPlannerTest {
                 .id(id)
                 .code(code)
                 .distanceFromEntryMm(distance)
+                .maxWeightKg(1_000)
+                .maxHeightMm(2_000)
+                .status(status)
+                .build();
+    }
+
+    private StoragePlace routedPlace(
+            Long id,
+            String code,
+            int aisleEntryXMm,
+            int accessYMm,
+            int storedDistance,
+            StoragePlaceStatus status
+    ) {
+        Aisle aisle = Aisle.builder()
+                .id(id)
+                .code("AISLE-" + id)
+                .entryXMm(aisleEntryXMm)
+                .entryYMm(0)
+                .build();
+        RackRow rackRow = RackRow.builder()
+                .id(id)
+                .code("ROW-" + id)
+                .aisle(aisle)
+                .build();
+
+        return StoragePlace.builder()
+                .id(id)
+                .code(code)
+                .rackRow(rackRow)
+                .accessXMm(aisleEntryXMm)
+                .accessYMm(accessYMm)
+                .distanceFromEntryMm(storedDistance)
                 .maxWeightKg(1_000)
                 .maxHeightMm(2_000)
                 .status(status)

@@ -17,6 +17,9 @@ import com.nikitaopara.warehouseoptimizer.warehouse.model.StoragePlace;
 import com.nikitaopara.warehouseoptimizer.warehouse.model.Warehouse;
 import com.nikitaopara.warehouseoptimizer.warehouse.repository.StoragePlaceRepository;
 import com.nikitaopara.warehouseoptimizer.warehouse.repository.WarehouseRepository;
+import com.nikitaopara.warehouseoptimizer.warehouse.routing.service.DijkstraWarehouseRouter;
+import com.nikitaopara.warehouseoptimizer.warehouse.routing.service.WarehouseGraphBuilder;
+import com.nikitaopara.warehouseoptimizer.warehouse.routing.service.WarehouseRouteCalculator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -67,6 +70,10 @@ class WarehouseOptimizationAssessmentServiceTest {
                 assessmentRepository,
                 demandForecastScoringService,
                 new WarehouseEfficiencyCalculator(),
+                new WarehouseRouteCalculator(
+                        new WarehouseGraphBuilder(),
+                        new DijkstraWarehouseRouter()
+                ),
                 properties
         );
     }

@@ -12,12 +12,12 @@ import java.util.Optional;
 public interface StoragePlaceRepository extends JpaRepository<StoragePlace, Long> {
     Optional<StoragePlace> findStoragePlaceByWarehouseIdAndCode(Long warehouseId, String code);
 
-    @EntityGraph(attributePaths = {"warehouse", "rackRow", "rackBay", "rackLevel"})
+    @EntityGraph(attributePaths = {"warehouse", "rackRow", "rackRow.aisle", "rackBay", "rackLevel"})
     List<StoragePlace> findByWarehouseIdAndStatusOrderByDistanceFromEntryMmAsc(
             Long warehouseId,
             StoragePlaceStatus status
     );
 
-    @EntityGraph(attributePaths = {"warehouse", "rackRow", "rackBay", "rackLevel"})
+    @EntityGraph(attributePaths = {"warehouse", "rackRow", "rackRow.aisle", "rackBay", "rackLevel"})
     List<StoragePlace> findByWarehouseIdOrderByDistanceFromEntryMmAsc(Long warehouseId);
 }

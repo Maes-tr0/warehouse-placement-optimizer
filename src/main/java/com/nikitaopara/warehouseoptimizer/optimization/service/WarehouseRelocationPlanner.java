@@ -7,6 +7,7 @@ import com.nikitaopara.warehouseoptimizer.putaway.container.service.ContainerDim
 import com.nikitaopara.warehouseoptimizer.putaway.placement.service.PlacementTimeEstimationService;
 import com.nikitaopara.warehouseoptimizer.warehouse.model.StoragePlace;
 import com.nikitaopara.warehouseoptimizer.warehouse.model.StoragePlaceStatus;
+import com.nikitaopara.warehouseoptimizer.warehouse.routing.service.WarehouseRouteCalculator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -22,6 +23,7 @@ public class WarehouseRelocationPlanner {
     private final ContainerDimensionCalculationService dimensionCalculationService;
     private final PlacementTimeEstimationService timeEstimationService;
     private final WarehouseEfficiencyCalculator efficiencyCalculator;
+    private final WarehouseRouteCalculator routeCalculator;
     private final OptimizationProperties properties;
 
     public RelocationPlanDraft createPlan(
@@ -29,6 +31,7 @@ public class WarehouseRelocationPlanner {
             List<StoragePlace> storagePlaces,
             Map<Long, ArticleDemandScore> demandByArticle
     ) {
+        Map<Long, Integer> routeDistances = routeCalculator.calculateDistances(storagePlaces);
         Map<Long, VirtualContainer> virtualContainers = createVirtualContainers(
                 storedContainers,
                 demandByArticle
@@ -45,14 +48,16 @@ public class WarehouseRelocationPlanner {
         estimatedSavingSeconds += planConsolidations(
                 virtualContainers,
                 availablePlaceIds,
-                steps
+                steps,
+                routeDistances
         );
 
         while (steps.size() < properties.getMaximumPlanSteps()) {
             BigDecimal score = calculateProjectedScore(
                     virtualContainers.values(),
                     storagePlaces,
-                    demandByArticle
+                    demandByArticle,
+                    routeDistances
             );
 
             if (score.compareTo(properties.getTargetPercent()) >= 0) {
@@ -62,7 +67,8 @@ public class WarehouseRelocationPlanner {
             Optional<MoveCandidate> directMove = findBestDirectMove(
                     virtualContainers.values(),
                     availablePlaceIds,
-                    placesById
+                    placesById,
+                    routeDistances
             );
 
             if (directMove.isPresent()) {
@@ -75,7 +81,8 @@ public class WarehouseRelocationPlanner {
             Optional<SwapCandidate> swap = findBestSwap(
                     virtualContainers.values(),
                     availablePlaceIds,
-                    placesById
+                    placesById,
+                    routeDistances
             );
 
             if (swap.isEmpty() || steps.size() + 3 > properties.getMaximumPlanSteps()) {
@@ -90,7 +97,8 @@ public class WarehouseRelocationPlanner {
         BigDecimal projectedScore = calculateProjectedScore(
                 virtualContainers.values(),
                 storagePlaces,
-                demandByArticle
+                demandByArticle,
+                routeDistances
         );
 
         return new RelocationPlanDraft(
@@ -142,7 +150,8 @@ public class WarehouseRelocationPlanner {
     private long planConsolidations(
             Map<Long, VirtualContainer> containers,
             Set<Long> availablePlaceIds,
-            List<PlannedRelocationStep> steps
+            List<PlannedRelocationStep> steps,
+            Map<Long, Integer> routeDistances
     ) {
         long totalSaving = 0;
         Map<Long, List<VirtualContainer>> byArticle = containers.values().stream()
@@ -173,7 +182,7 @@ public class WarehouseRelocationPlanner {
                 }
 
                 VirtualContainer target = targetCandidate.get();
-                long saving = calculateContainerPickingCost(source);
+                long saving = calculateContainerPickingCost(source, routeDistances);
 
                 steps.add(new PlannedRelocationStep(
                         RelocationStepType.MERGE,
@@ -229,7 +238,8 @@ public class WarehouseRelocationPlanner {
     private Optional<MoveCandidate> findBestDirectMove(
             Collection<VirtualContainer> containers,
             Set<Long> availablePlaceIds,
-            Map<Long, StoragePlace> placesById
+            Map<Long, StoragePlace> placesById,
+            Map<Long, Integer> routeDistances
     ) {
         MoveCandidate best = null;
 
@@ -245,7 +255,12 @@ public class WarehouseRelocationPlanner {
                     continue;
                 }
 
-                long saving = calculateMoveSaving(container, container.place(), target);
+                long saving = calculateMoveSaving(
+                        container,
+                        container.place(),
+                        target,
+                        routeDistances
+                );
 
                 if (saving < properties.getMinimumTimeSavingSeconds()) {
                     continue;
@@ -265,7 +280,8 @@ public class WarehouseRelocationPlanner {
     private Optional<SwapCandidate> findBestSwap(
             Collection<VirtualContainer> containers,
             Set<Long> availablePlaceIds,
-            Map<Long, StoragePlace> placesById
+            Map<Long, StoragePlace> placesById,
+            Map<Long, Integer> routeDistances
     ) {
         List<StoragePlace> buffers = availablePlaceIds.stream()
                 .map(placesById::get)
@@ -291,10 +307,10 @@ public class WarehouseRelocationPlanner {
                     continue;
                 }
 
-                long before = calculateContainerPickingCost(first)
-                        + calculateContainerPickingCost(second);
-                long after = calculatePickingCost(first, second.place())
-                        + calculatePickingCost(second, first.place());
+                long before = calculateContainerPickingCost(first, routeDistances)
+                        + calculateContainerPickingCost(second, routeDistances);
+                long after = calculatePickingCost(first, second.place(), routeDistances)
+                        + calculatePickingCost(second, first.place(), routeDistances);
                 long saving = before - after;
 
                 if (saving < properties.getMinimumTimeSavingSeconds()) {
@@ -379,25 +395,38 @@ public class WarehouseRelocationPlanner {
     private long calculateMoveSaving(
             VirtualContainer container,
             StoragePlace from,
-            StoragePlace to
+            StoragePlace to,
+            Map<Long, Integer> routeDistances
     ) {
-        return calculatePickingCost(container, from) - calculatePickingCost(container, to);
+        return calculatePickingCost(container, from, routeDistances)
+                - calculatePickingCost(container, to, routeDistances);
     }
 
-    private long calculateContainerPickingCost(VirtualContainer container) {
-        return calculatePickingCost(container, container.place());
+    private long calculateContainerPickingCost(
+            VirtualContainer container,
+            Map<Long, Integer> routeDistances
+    ) {
+        return calculatePickingCost(container, container.place(), routeDistances);
     }
 
-    private long calculatePickingCost(VirtualContainer container, StoragePlace place) {
+    private long calculatePickingCost(
+            VirtualContainer container,
+            StoragePlace place,
+            Map<Long, Integer> routeDistances
+    ) {
         return Math.round(
-                container.demandWeight() * timeEstimationService.estimatePlacementTimeSeconds(place)
+                container.demandWeight() * timeEstimationService.estimatePlacementTimeSeconds(
+                        place,
+                        routeDistance(place, routeDistances)
+                )
         );
     }
 
     private BigDecimal calculateProjectedScore(
             Collection<VirtualContainer> containers,
             List<StoragePlace> places,
-            Map<Long, ArticleDemandScore> demandByArticle
+            Map<Long, ArticleDemandScore> demandByArticle,
+            Map<Long, Integer> routeDistances
     ) {
         if (places.isEmpty()) {
             return BigDecimal.ZERO;
@@ -408,15 +437,15 @@ public class WarehouseRelocationPlanner {
                         container.entity().getId(),
                         container.entity().getArticle().getId(),
                         container.quantity(),
-                        container.place().getDistanceFromEntryMm()
+                        routeDistance(container.place(), routeDistances)
                 ))
                 .toList();
-        int nearest = places.stream()
-                .mapToInt(StoragePlace::getDistanceFromEntryMm)
+        int nearest = routeDistances.values().stream()
+                .mapToInt(Integer::intValue)
                 .min()
                 .orElse(0);
-        int farthest = places.stream()
-                .mapToInt(StoragePlace::getDistanceFromEntryMm)
+        int farthest = routeDistances.values().stream()
+                .mapToInt(Integer::intValue)
                 .max()
                 .orElse(nearest);
         WarehouseEfficiencyResult result = efficiencyCalculator.calculate(
@@ -429,6 +458,16 @@ public class WarehouseRelocationPlanner {
         return result.scorePercent() == null
                 ? BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP)
                 : result.scorePercent();
+    }
+
+    private int routeDistance(
+            StoragePlace place,
+            Map<Long, Integer> routeDistances
+    ) {
+        return routeDistances.getOrDefault(
+                place.getId(),
+                place.getDistanceFromEntryMm() == null ? 0 : place.getDistanceFromEntryMm()
+        );
     }
 
     private static final class VirtualContainer {

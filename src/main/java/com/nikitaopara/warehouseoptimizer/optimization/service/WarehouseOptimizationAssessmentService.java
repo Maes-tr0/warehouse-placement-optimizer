@@ -15,6 +15,7 @@ import com.nikitaopara.warehouseoptimizer.warehouse.model.StoragePlace;
 import com.nikitaopara.warehouseoptimizer.warehouse.model.Warehouse;
 import com.nikitaopara.warehouseoptimizer.warehouse.repository.StoragePlaceRepository;
 import com.nikitaopara.warehouseoptimizer.warehouse.repository.WarehouseRepository;
+import com.nikitaopara.warehouseoptimizer.warehouse.routing.service.WarehouseRouteCalculator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +36,7 @@ public class WarehouseOptimizationAssessmentService {
     private final WarehouseOptimizationAssessmentRepository assessmentRepository;
     private final DemandForecastScoringService demandForecastScoringService;
     private final WarehouseEfficiencyCalculator efficiencyCalculator;
+    private final WarehouseRouteCalculator routeCalculator;
     private final OptimizationProperties properties;
 
     @Transactional
@@ -62,6 +64,7 @@ public class WarehouseOptimizationAssessmentService {
         );
         List<StoragePlace> storagePlaces = storagePlaceRepository
                 .findByWarehouseIdOrderByDistanceFromEntryMmAsc(warehouseId);
+        Map<Long, Integer> routeDistances = routeCalculator.calculateDistances(storagePlaces);
 
         List<DemandObservation> observations = demandItems.stream()
                 .map(this::toDemandObservation)
@@ -70,8 +73,10 @@ public class WarehouseOptimizationAssessmentService {
                 .filter(container -> container.getCurrentStoragePlace() != null)
                 .filter(container -> container.getArticle() != null)
                 .filter(container -> container.getQuantity() != null && container.getQuantity() > 0)
-                .filter(container -> container.getCurrentStoragePlace().getDistanceFromEntryMm() != null)
-                .map(this::toInventoryPosition)
+                .filter(container -> routeDistances.containsKey(
+                        container.getCurrentStoragePlace().getId()
+                ))
+                .map(container -> toInventoryPosition(container, routeDistances))
                 .toList();
 
         WarehouseOptimizationAssessment assessment = calculateAssessment(
@@ -81,7 +86,8 @@ public class WarehouseOptimizationAssessmentService {
                 lookbackStart,
                 observations,
                 inventory,
-                storagePlaces
+                storagePlaces,
+                routeDistances
         );
 
         return toResponse(assessmentRepository.save(assessment));
@@ -109,7 +115,8 @@ public class WarehouseOptimizationAssessmentService {
             LocalDateTime lookbackStart,
             List<DemandObservation> observations,
             List<InventoryPosition> inventory,
-            List<StoragePlace> storagePlaces
+            List<StoragePlace> storagePlaces,
+            Map<Long, Integer> routeDistances
     ) {
         if (observations.size() < properties.getMinimumDemandObservations()
                 || inventory.isEmpty()
@@ -130,14 +137,12 @@ public class WarehouseOptimizationAssessmentService {
                 analyzedAt.toLocalDate()
         );
 
-        int nearestDistance = storagePlaces.stream()
-                .map(StoragePlace::getDistanceFromEntryMm)
-                .filter(distance -> distance != null && distance >= 0)
+        int nearestDistance = routeDistances.values().stream()
+                .filter(distance -> distance >= 0)
                 .min(Comparator.naturalOrder())
                 .orElse(0);
-        int farthestDistance = storagePlaces.stream()
-                .map(StoragePlace::getDistanceFromEntryMm)
-                .filter(distance -> distance != null && distance >= 0)
+        int farthestDistance = routeDistances.values().stream()
+                .filter(distance -> distance >= 0)
                 .max(Comparator.naturalOrder())
                 .orElse(nearestDistance);
 
@@ -209,12 +214,15 @@ public class WarehouseOptimizationAssessmentService {
         );
     }
 
-    private InventoryPosition toInventoryPosition(Container container) {
+    private InventoryPosition toInventoryPosition(
+            Container container,
+            Map<Long, Integer> routeDistances
+    ) {
         return new InventoryPosition(
                 container.getId(),
                 container.getArticle().getId(),
                 container.getQuantity(),
-                container.getCurrentStoragePlace().getDistanceFromEntryMm()
+                routeDistances.get(container.getCurrentStoragePlace().getId())
         );
     }
 
