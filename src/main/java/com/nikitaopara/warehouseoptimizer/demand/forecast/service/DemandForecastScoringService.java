@@ -97,8 +97,19 @@ public class DemandForecastScoringService {
                             fallback.orderCount()
                     ));
                 } catch (IllegalArgumentException exception) {
+                    double baselineForecast = datasetBuilder.buildBaselineForecast(
+                            articleId,
+                            articleObservations,
+                            analysisDate
+                    );
+                    scores.put(articleId, new ArticleDemandScore(
+                            articleId,
+                            baselineForecast,
+                            fallback.totalQuantity(),
+                            fallback.orderCount()
+                    ));
                     log.debug(
-                            "Using seasonal demand fallback for warehouse {}, article {}: {}",
+                            "Using baseline demand forecast for warehouse {}, article {}: {}",
                             warehouseId,
                             articleId,
                             exception.getMessage()

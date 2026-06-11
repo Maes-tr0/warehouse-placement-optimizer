@@ -111,6 +111,33 @@ public class DemandForecastDatasetBuilder {
             List<DemandObservation> observations,
             LocalDate featureDate
     ) {
+        ArticleSeries series = getPredictionSeries(articleId, observations, featureDate);
+
+        long historyDays = ChronoUnit.DAYS.between(series.firstDemandDate(), featureDate) + 1;
+
+        if (historyDays < properties.getMinimumArticleHistoryDays()) {
+            throw new IllegalArgumentException("Article has insufficient demand history: " + articleId);
+        }
+
+        return createRow(series, featureDate);
+    }
+
+    public double buildBaselineForecast(
+            Long articleId,
+            List<DemandObservation> observations,
+            LocalDate featureDate
+    ) {
+        ArticleSeries series = getPredictionSeries(articleId, observations, featureDate);
+        double quantity28 = sumQuantity(series, featureDate, 28);
+
+        return quantity28 / 28.0 * properties.getForecastHorizonDays();
+    }
+
+    private ArticleSeries getPredictionSeries(
+            Long articleId,
+            List<DemandObservation> observations,
+            LocalDate featureDate
+    ) {
         ArticleSeries series = aggregate(observations.stream()
                 .filter(this::isValid)
                 .filter(observation -> articleId.equals(observation.articleId()))
@@ -125,13 +152,7 @@ public class DemandForecastDatasetBuilder {
             throw new IllegalArgumentException("Article has no valid demand history: " + articleId);
         }
 
-        long historyDays = ChronoUnit.DAYS.between(series.firstDemandDate(), featureDate) + 1;
-
-        if (historyDays < properties.getMinimumArticleHistoryDays()) {
-            throw new IllegalArgumentException("Article has insufficient demand history: " + articleId);
-        }
-
-        return createRow(series, featureDate);
+        return series;
     }
 
     private Map<Long, ArticleSeries> aggregate(List<DemandObservation> observations) {

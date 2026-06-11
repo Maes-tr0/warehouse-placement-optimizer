@@ -109,7 +109,7 @@ class DemandForecastScoringServiceTest {
     }
 
     @Test
-    void keepsFallbackForArticleWithoutEnoughHistory() {
+    void usesHorizonScaledBaselineForArticleWithoutEnoughHistory() {
         LocalDate analysisDate = LocalDate.of(2026, 6, 10);
         List<DemandObservation> observations = List.of(observation(1L, analysisDate, 5));
         DemandForecastModel activeModel = DemandForecastModel.builder()
@@ -124,10 +124,13 @@ class DemandForecastScoringServiceTest {
         when(trainer.deserialize(activeModel.getModelArtifact())).thenReturn(tribuoModel);
         when(datasetBuilder.buildPredictionRow(1L, observations, analysisDate))
                 .thenThrow(new IllegalArgumentException("insufficient history"));
+        when(datasetBuilder.buildBaselineForecast(1L, observations, analysisDate))
+                .thenReturn(2.5);
 
         ArticleDemandScore result = service.calculate(9L, observations, analysisDate).get(1L);
 
-        assertThat(result.weightedDemand()).isPositive();
+        assertThat(result.weightedDemand()).isEqualTo(2.5);
+        assertThat(result.totalQuantity()).isEqualTo(5);
         verify(trainer, never()).predict(any(), any());
     }
 

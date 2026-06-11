@@ -30,6 +30,18 @@ class DemandForecastDatasetBuilderTest {
     }
 
     @Test
+    void buildsColdStartBaselineOnForecastHorizonScale() {
+        LocalDate featureDate = LocalDate.of(2026, 6, 10);
+        List<DemandObservation> observations = List.of(
+                observation(1L, 1L, featureDate, 5)
+        );
+
+        double result = builder.buildBaselineForecast(1L, observations, featureDate);
+
+        assertThat(result).isEqualTo(2.5);
+    }
+
+    @Test
     void buildsChronologicalDatasetWithoutTargetLeakage() {
         LocalDate cutoff = LocalDate.of(2026, 6, 1);
         List<DemandObservation> observations = dailyDemand(
