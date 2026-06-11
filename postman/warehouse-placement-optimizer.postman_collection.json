@@ -1,0 +1,926 @@
+{
+  "info": {
+    "_postman_id": "f28214c2-9f4b-4d25-91d7-ad0e9bcd2dc5",
+    "name": "Warehouse Placement Optimizer",
+    "description": "Ordered end-to-end API checks for authentication, setup, placement recommendations, batch receiving, demand history, and structured errors.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "basic",
+    "basic": [
+      {
+        "key": "username",
+        "value": "{{rootAdminEmail}}",
+        "type": "string"
+      },
+      {
+        "key": "password",
+        "value": "{{rootAdminPassword}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {"key": "baseUrl", "value": "http://localhost:8080"},
+    {"key": "rootAdminEmail", "value": "admin@example.com"},
+    {"key": "rootAdminPassword", "value": "local-root-password"},
+    {"key": "runId", "value": ""},
+    {"key": "operatorEmail", "value": ""},
+    {"key": "operatorPassword", "value": ""},
+    {"key": "warehouseCode", "value": ""},
+    {"key": "warehouseId", "value": ""},
+    {"key": "articleNumber", "value": ""},
+    {"key": "secondaryArticleNumber", "value": ""},
+    {"key": "articleId", "value": ""},
+    {"key": "targetContainerNumber", "value": ""},
+    {"key": "sourceContainerNumber", "value": ""},
+    {"key": "batchContainerOne", "value": ""},
+    {"key": "batchContainerTwo", "value": ""},
+    {"key": "placeRecommendationCode", "value": ""},
+    {"key": "placeStorageCode", "value": ""},
+    {"key": "mergeRecommendationCode", "value": ""},
+    {"key": "mergeStorageCode", "value": ""},
+    {"key": "orderNumberOne", "value": ""},
+    {"key": "orderNumberTwo", "value": ""}
+  ],
+  "item": [
+    {
+      "name": "00 Access and session",
+      "item": [
+        {
+          "name": "Initialize run",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const now = Date.now().toString();",
+                  "const suffix = now.slice(-8);",
+                  "pm.collectionVariables.set('runId', suffix);",
+                  "pm.collectionVariables.set('operatorEmail', 'operator.' + now + '@example.com');",
+                  "pm.collectionVariables.set('operatorPassword', 'Operator123!');",
+                  "pm.collectionVariables.set('warehouseCode', 'WH-' + suffix);",
+                  "pm.collectionVariables.set('articleNumber', suffix + '01');",
+                  "pm.collectionVariables.set('secondaryArticleNumber', suffix + '02');",
+                  "pm.collectionVariables.set('targetContainerNumber', 'PAL-T-' + suffix);",
+                  "pm.collectionVariables.set('sourceContainerNumber', 'PAL-S-' + suffix);",
+                  "pm.collectionVariables.set('batchContainerOne', 'PAL-B1-' + suffix);",
+                  "pm.collectionVariables.set('batchContainerTwo', 'PAL-B2-' + suffix);",
+                  "pm.collectionVariables.set('orderNumberOne', 'ORD-' + suffix + '-1');",
+                  "pm.collectionVariables.set('orderNumberTwo', 'ORD-' + suffix + '-2');",
+                  "['warehouseId', 'articleId', 'placeRecommendationCode', 'placeStorageCode', 'mergeRecommendationCode', 'mergeStorageCode'].forEach(function (key) {",
+                  "  pm.collectionVariables.unset(key);",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Root admin is authenticated', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Accounts response is an array', function () {",
+                  "  pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/admin/accounts",
+            "description": "Starts a fresh collection run and verifies the bootstrap ROOT_ADMIN credentials."
+          }
+        },
+        {
+          "name": "Unauthenticated request returns JSON 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test('Error contract is AUTHENTICATION_REQUIRED', function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.code).to.eql('AUTHENTICATION_REQUIRED');",
+                  "  pm.expect(body.path).to.eql('/admin/articles');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {"type": "noauth"},
+            "method": "GET",
+            "url": "{{baseUrl}}/admin/articles"
+          }
+        },
+        {
+          "name": "Create operator",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Operator is created', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.email).to.eql(pm.collectionVariables.get('operatorEmail'));",
+                  "  pm.expect(body.role).to.eql('OPERATOR');",
+                  "  pm.expect(body.status).to.eql('ACTIVE');",
+                  "  pm.collectionVariables.set('operatorId', body.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{operatorEmail}}\",\n  \"password\": \"{{operatorPassword}}\",\n  \"fullName\": \"Postman Operator {{runId}}\",\n  \"role\": \"OPERATOR\"\n}"
+            },
+            "url": "{{baseUrl}}/admin/accounts"
+          }
+        },
+        {
+          "name": "Operator cannot access admin API",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "});",
+                  "pm.test('Error contract is ACCESS_DENIED', function () {",
+                  "  pm.expect(pm.response.json().code).to.eql('ACCESS_DENIED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{operatorEmail}}", "type": "string"},
+                {"key": "password", "value": "{{operatorPassword}}", "type": "string"}
+              ]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/admin/articles"
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 Warehouse and articles",
+      "item": [
+        {
+          "name": "Create warehouse",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Warehouse is created', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.warehouseCode).to.eql(pm.collectionVariables.get('warehouseCode'));",
+                  "  pm.expect(body.generatedStoragePlaceCount).to.eql(8);",
+                  "  pm.collectionVariables.set('warehouseId', body.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"warehouseCode\": \"{{warehouseCode}}\",\n  \"warehouseName\": \"Postman Warehouse {{runId}}\",\n  \"layoutType\": \"MAIN_CORRIDOR_ONE_SIDE_AISLES\",\n  \"aisleCount\": 1,\n  \"rackRowCount\": 1,\n  \"baysPerRackRow\": 2,\n  \"palletPlacesPerLevel\": 2,\n  \"aisleWidthMm\": 3500,\n  \"levelProfiles\": [\n    {\n      \"levelNumber\": 1,\n      \"clearHeightMm\": 1800,\n      \"maxCellLoadKg\": 1200\n    },\n    {\n      \"levelNumber\": 2,\n      \"clearHeightMm\": 1600,\n      \"maxCellLoadKg\": 900\n    }\n  ],\n  \"maxBayLoadKg\": 5000\n}"
+            },
+            "url": "{{baseUrl}}/admin/warehouses"
+          }
+        },
+        {
+          "name": "Create article batch",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Two articles are created', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.totalArticles).to.eql(2);",
+                  "  pm.expect(body.createdArticles).to.eql(2);",
+                  "  const mainArticle = body.articles.find(function (article) {",
+                  "    return article.articleNumber === pm.collectionVariables.get('articleNumber');",
+                  "  });",
+                  "  pm.expect(mainArticle).to.exist;",
+                  "  pm.collectionVariables.set('articleId', mainArticle.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"articles\": [\n    {\n      \"articleNumber\": \"{{articleNumber}}\",\n      \"name\": \"Postman Main Article {{runId}}\",\n      \"unitType\": \"BOX\",\n      \"unitWidthMm\": 400,\n      \"unitLengthMm\": 600,\n      \"unitHeightMm\": 150,\n      \"unitWeightKg\": 10.0,\n      \"maxQuantityPerPallet\": 100\n    },\n    {\n      \"articleNumber\": \"{{secondaryArticleNumber}}\",\n      \"name\": \"Postman Secondary Article {{runId}}\",\n      \"unitType\": \"PCS\",\n      \"unitWidthMm\": 200,\n      \"unitLengthMm\": 300,\n      \"unitHeightMm\": 150,\n      \"unitWeightKg\": 5.0,\n      \"maxQuantityPerPallet\": 50\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/admin/articles/batch"
+          }
+        },
+        {
+          "name": "Repeat article batch is idempotent",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('No duplicate articles are created', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.totalArticles).to.eql(2);",
+                  "  pm.expect(body.createdArticles).to.eql(0);",
+                  "  pm.expect(body.articles).to.be.an('array').that.is.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"articles\": [\n    {\n      \"articleNumber\": \"{{articleNumber}}\",\n      \"name\": \"Postman Main Article {{runId}}\",\n      \"unitType\": \"BOX\",\n      \"unitWidthMm\": 400,\n      \"unitLengthMm\": 600,\n      \"unitHeightMm\": 150,\n      \"unitWeightKg\": 10.0,\n      \"maxQuantityPerPallet\": 100\n    },\n    {\n      \"articleNumber\": \"{{secondaryArticleNumber}}\",\n      \"name\": \"Postman Secondary Article {{runId}}\",\n      \"unitType\": \"PCS\",\n      \"unitWidthMm\": 200,\n      \"unitLengthMm\": 300,\n      \"unitHeightMm\": 150,\n      \"unitWeightKg\": 5.0,\n      \"maxQuantityPerPallet\": 50\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/admin/articles/batch"
+          }
+        },
+        {
+          "name": "Get article by number",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Article can be loaded by business number', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.id).to.eql(Number(pm.collectionVariables.get('articleId')));",
+                  "  pm.expect(body.articleNumber).to.eql(pm.collectionVariables.get('articleNumber'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/admin/articles/number/{{articleNumber}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 PLACE recommendation",
+      "item": [
+        {
+          "name": "Receive target container",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Container waits for placement', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.containerNumber).to.eql(pm.collectionVariables.get('targetContainerNumber'));",
+                  "  pm.expect(body.status).to.eql('WAITING_FOR_PLACEMENT');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{operatorEmail}}", "type": "string"},
+                {"key": "password", "value": "{{operatorPassword}}", "type": "string"}
+              ]
+            },
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"warehouseId\": {{warehouseId}},\n  \"containerNumber\": \"{{targetContainerNumber}}\",\n  \"articleNumber\": \"{{articleNumber}}\",\n  \"quantity\": 20,\n  \"weightKg\": 400.0,\n  \"heightMm\": 1200\n}"
+            },
+            "url": "{{baseUrl}}/operator/containers/receive"
+          }
+        },
+        {
+          "name": "Recommend PLACE",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('PLACE recommendation is returned', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.recommendationType).to.eql('PLACE');",
+                  "  pm.expect(body.status).to.eql('SUGGESTED');",
+                  "  pm.expect(body.recommendedStoragePlaceCode).to.be.a('string').and.not.empty;",
+                  "  pm.expect(body.expiresAt).to.be.a('string').and.not.empty;",
+                  "  pm.collectionVariables.set('placeRecommendationCode', body.code);",
+                  "  pm.collectionVariables.set('placeStorageCode', body.recommendedStoragePlaceCode);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{operatorEmail}}", "type": "string"},
+                {"key": "password", "value": "{{operatorPassword}}", "type": "string"}
+              ]
+            },
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"containerNumber\": \"{{targetContainerNumber}}\"\n}"
+            },
+            "url": "{{baseUrl}}/operator/placement/recommend"
+          }
+        },
+        {
+          "name": "Reject incorrect scanned place",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Incorrect scan is rejected', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.code).to.eql('BAD_REQUEST');",
+                  "  pm.expect(body.message).to.include('does not match recommendation');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{operatorEmail}}", "type": "string"},
+                {"key": "password", "value": "{{operatorPassword}}", "type": "string"}
+              ]
+            },
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scannedStoragePlaceCode\": \"WRONG-PLACE\"\n}"
+            },
+            "url": "{{baseUrl}}/operator/placement/recommendations/{{placeRecommendationCode}}/approve"
+          }
+        },
+        {
+          "name": "Approve PLACE",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('PLACE recommendation is accepted', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.recommendationType).to.eql('PLACE');",
+                  "  pm.expect(body.status).to.eql('ACCEPTED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{operatorEmail}}", "type": "string"},
+                {"key": "password", "value": "{{operatorPassword}}", "type": "string"}
+              ]
+            },
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scannedStoragePlaceCode\": \"{{placeStorageCode}}\"\n}"
+            },
+            "url": "{{baseUrl}}/operator/placement/recommendations/{{placeRecommendationCode}}/approve"
+          }
+        },
+        {
+          "name": "Verify placed target container",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Container is stored in recommended place', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status).to.eql('STORED');",
+                  "  pm.expect(body.currentStoragePlaceCode).to.eql(pm.collectionVariables.get('placeStorageCode'));",
+                  "  pm.expect(body.quantity).to.eql(20);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{operatorEmail}}", "type": "string"},
+                {"key": "password", "value": "{{operatorPassword}}", "type": "string"}
+              ]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/operator/containers/{{targetContainerNumber}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 MERGE recommendation",
+      "item": [
+        {
+          "name": "Receive source container",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Source container waits for placement', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(pm.response.json().status).to.eql('WAITING_FOR_PLACEMENT');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{operatorEmail}}", "type": "string"},
+                {"key": "password", "value": "{{operatorPassword}}", "type": "string"}
+              ]
+            },
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"warehouseId\": {{warehouseId}},\n  \"containerNumber\": \"{{sourceContainerNumber}}\",\n  \"articleNumber\": \"{{articleNumber}}\",\n  \"quantity\": 15,\n  \"weightKg\": 250.0,\n  \"heightMm\": 1100\n}"
+            },
+            "url": "{{baseUrl}}/operator/containers/receive"
+          }
+        },
+        {
+          "name": "Recommend MERGE",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('MERGE recommendation targets stored container', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.recommendationType).to.eql('MERGE');",
+                  "  pm.expect(body.status).to.eql('SUGGESTED');",
+                  "  pm.expect(body.targetContainerNumber).to.eql(pm.collectionVariables.get('targetContainerNumber'));",
+                  "  pm.expect(body.targetStoragePlaceCode).to.eql(pm.collectionVariables.get('placeStorageCode'));",
+                  "  pm.collectionVariables.set('mergeRecommendationCode', body.code);",
+                  "  pm.collectionVariables.set('mergeStorageCode', body.targetStoragePlaceCode);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{operatorEmail}}", "type": "string"},
+                {"key": "password", "value": "{{operatorPassword}}", "type": "string"}
+              ]
+            },
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"containerNumber\": \"{{sourceContainerNumber}}\"\n}"
+            },
+            "url": "{{baseUrl}}/operator/placement/recommend"
+          }
+        },
+        {
+          "name": "Reject MERGE",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Recommendation is rejected', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().status).to.eql('REJECTED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{operatorEmail}}", "type": "string"},
+                {"key": "password", "value": "{{operatorPassword}}", "type": "string"}
+              ]
+            },
+            "method": "POST",
+            "url": "{{baseUrl}}/operator/placement/recommendations/{{mergeRecommendationCode}}/reject"
+          }
+        },
+        {
+          "name": "Recommend again after rejection",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Candidate fallback returns a usable recommendation', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status).to.eql('SUGGESTED');",
+                  "  pm.expect(body.recommendationType).to.eql('MERGE');",
+                  "  pm.expect(body.targetContainerNumber).to.eql(pm.collectionVariables.get('targetContainerNumber'));",
+                  "  pm.collectionVariables.set('mergeRecommendationCode', body.code);",
+                  "  pm.collectionVariables.set('mergeStorageCode', body.targetStoragePlaceCode);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{operatorEmail}}", "type": "string"},
+                {"key": "password", "value": "{{operatorPassword}}", "type": "string"}
+              ]
+            },
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"containerNumber\": \"{{sourceContainerNumber}}\"\n}"
+            },
+            "url": "{{baseUrl}}/operator/placement/recommend"
+          }
+        },
+        {
+          "name": "Approve MERGE",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('MERGE recommendation is accepted', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.recommendationType).to.eql('MERGE');",
+                  "  pm.expect(body.status).to.eql('ACCEPTED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{operatorEmail}}", "type": "string"},
+                {"key": "password", "value": "{{operatorPassword}}", "type": "string"}
+              ]
+            },
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scannedStoragePlaceCode\": \"{{mergeStorageCode}}\"\n}"
+            },
+            "url": "{{baseUrl}}/operator/placement/recommendations/{{mergeRecommendationCode}}/approve"
+          }
+        },
+        {
+          "name": "Verify merged source",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Source container is closed as merged', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status).to.eql('MERGED');",
+                  "  pm.expect(body.mergedIntoContainerNumber).to.eql(pm.collectionVariables.get('targetContainerNumber'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{operatorEmail}}", "type": "string"},
+                {"key": "password", "value": "{{operatorPassword}}", "type": "string"}
+              ]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/operator/containers/{{sourceContainerNumber}}"
+          }
+        },
+        {
+          "name": "Verify merge target quantity",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Target contains the merged quantity', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status).to.eql('STORED');",
+                  "  pm.expect(body.quantity).to.eql(35);",
+                  "  pm.expect(body.currentStoragePlaceCode).to.eql(pm.collectionVariables.get('placeStorageCode'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{operatorEmail}}", "type": "string"},
+                {"key": "password", "value": "{{operatorPassword}}", "type": "string"}
+              ]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/operator/containers/{{targetContainerNumber}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Batch and demand history",
+      "item": [
+        {
+          "name": "Receive container batch",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Two containers are received', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.totalContainers).to.eql(2);",
+                  "  pm.expect(body.receivedContainers).to.eql(2);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{operatorEmail}}", "type": "string"},
+                {"key": "password", "value": "{{operatorPassword}}", "type": "string"}
+              ]
+            },
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"containers\": [\n    {\n      \"warehouseId\": {{warehouseId}},\n      \"containerNumber\": \"{{batchContainerOne}}\",\n      \"articleNumber\": \"{{secondaryArticleNumber}}\",\n      \"quantity\": 10,\n      \"weightKg\": 200.0,\n      \"heightMm\": 1000\n    },\n    {\n      \"warehouseId\": {{warehouseId}},\n      \"containerNumber\": \"{{batchContainerTwo}}\",\n      \"articleNumber\": \"{{secondaryArticleNumber}}\",\n      \"quantity\": 12,\n      \"weightKg\": 220.0,\n      \"heightMm\": 1000\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/operator/containers/receive/batch"
+          }
+        },
+        {
+          "name": "Repeat container batch is idempotent",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('No duplicate containers are received', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.totalContainers).to.eql(2);",
+                  "  pm.expect(body.receivedContainers).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{operatorEmail}}", "type": "string"},
+                {"key": "password", "value": "{{operatorPassword}}", "type": "string"}
+              ]
+            },
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"containers\": [\n    {\n      \"warehouseId\": {{warehouseId}},\n      \"containerNumber\": \"{{batchContainerOne}}\",\n      \"articleNumber\": \"{{secondaryArticleNumber}}\",\n      \"quantity\": 10,\n      \"weightKg\": 200.0,\n      \"heightMm\": 1000\n    },\n    {\n      \"warehouseId\": {{warehouseId}},\n      \"containerNumber\": \"{{batchContainerTwo}}\",\n      \"articleNumber\": \"{{secondaryArticleNumber}}\",\n      \"quantity\": 12,\n      \"weightKg\": 220.0,\n      \"heightMm\": 1000\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/operator/containers/receive/batch"
+          }
+        },
+        {
+          "name": "Import demand history",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Demand orders are imported', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.totalOrders).to.eql(2);",
+                  "  pm.expect(body.importedOrders).to.eql(2);",
+                  "  pm.expect(body.skippedDuplicateOrders).to.eql(0);",
+                  "  pm.expect(body.totalItems).to.eql(3);",
+                  "  pm.expect(body.importedItems).to.eql(3);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"warehouseId\": {{warehouseId}},\n  \"orders\": [\n    {\n      \"orderNumber\": \"{{orderNumberOne}}\",\n      \"orderDateTime\": \"2026-01-15T10:00:00\",\n      \"items\": [\n        {\n          \"articleNumber\": \"{{articleNumber}}\",\n          \"quantity\": 8\n        },\n        {\n          \"articleNumber\": \"{{secondaryArticleNumber}}\",\n          \"quantity\": 4\n        }\n      ]\n    },\n    {\n      \"orderNumber\": \"{{orderNumberTwo}}\",\n      \"orderDateTime\": \"2026-01-16T11:30:00\",\n      \"items\": [\n        {\n          \"articleNumber\": \"{{articleNumber}}\",\n          \"quantity\": 12\n        }\n      ]\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/admin/demand-history/import"
+          }
+        },
+        {
+          "name": "Repeat demand import is idempotent",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Existing orders are skipped', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.totalOrders).to.eql(2);",
+                  "  pm.expect(body.importedOrders).to.eql(0);",
+                  "  pm.expect(body.skippedDuplicateOrders).to.eql(2);",
+                  "  pm.expect(body.importedItems).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"warehouseId\": {{warehouseId}},\n  \"orders\": [\n    {\n      \"orderNumber\": \"{{orderNumberOne}}\",\n      \"orderDateTime\": \"2026-01-15T10:00:00\",\n      \"items\": [\n        {\n          \"articleNumber\": \"{{articleNumber}}\",\n          \"quantity\": 8\n        },\n        {\n          \"articleNumber\": \"{{secondaryArticleNumber}}\",\n          \"quantity\": 4\n        }\n      ]\n    },\n    {\n      \"orderNumber\": \"{{orderNumberTwo}}\",\n      \"orderDateTime\": \"2026-01-16T11:30:00\",\n      \"items\": [\n        {\n          \"articleNumber\": \"{{articleNumber}}\",\n          \"quantity\": 12\n        }\n      ]\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/admin/demand-history/import"
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 Structured errors",
+      "item": [
+        {
+          "name": "Missing article returns JSON 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', function () {",
+                  "  pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test('Error contract is RESOURCE_NOT_FOUND', function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.code).to.eql('RESOURCE_NOT_FOUND');",
+                  "  pm.expect(body.path).to.include('/admin/articles/number/');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/admin/articles/number/{{articleNumber}}999"
+          }
+        },
+        {
+          "name": "Invalid account returns field errors",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test('Bean validation errors are structured', function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.code).to.eql('VALIDATION_ERROR');",
+                  "  pm.expect(body.fieldErrors).to.be.an('object');",
+                  "  pm.expect(body.fieldErrors).to.have.property('email');",
+                  "  pm.expect(body.fieldErrors).to.have.property('password');",
+                  "  pm.expect(body.fieldErrors).to.have.property('fullName');",
+                  "  pm.expect(body.fieldErrors).to.have.property('role');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"not-an-email\",\n  \"password\": \"123\",\n  \"fullName\": \"\",\n  \"role\": null\n}"
+            },
+            "url": "{{baseUrl}}/admin/accounts"
+          }
+        }
+      ]
+    }
+  ]
+}
