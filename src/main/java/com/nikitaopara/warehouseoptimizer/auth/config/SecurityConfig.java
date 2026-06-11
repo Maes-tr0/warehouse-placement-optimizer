@@ -1,6 +1,7 @@
 package com.nikitaopara.warehouseoptimizer.auth.config;
 
 import com.nikitaopara.warehouseoptimizer.common.error.ApiErrorResponse;
+import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,6 +26,12 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
+                        .dispatcherTypeMatchers(DispatcherType.ERROR)
+                        .permitAll()
+
+                        .requestMatchers("/error")
+                        .permitAll()
+
                         .requestMatchers("/admin/**")
                         .hasAnyRole("ROOT_ADMIN", "ADMIN")
 
