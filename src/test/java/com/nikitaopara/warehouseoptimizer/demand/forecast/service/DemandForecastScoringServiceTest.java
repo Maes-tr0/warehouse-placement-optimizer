@@ -4,6 +4,7 @@ import com.nikitaopara.warehouseoptimizer.demand.forecast.config.DemandForecastP
 import com.nikitaopara.warehouseoptimizer.demand.forecast.model.DemandForecastModel;
 import com.nikitaopara.warehouseoptimizer.demand.forecast.model.DemandForecastModelStatus;
 import com.nikitaopara.warehouseoptimizer.demand.forecast.model.DemandForecastRow;
+import com.nikitaopara.warehouseoptimizer.demand.forecast.model.DemandScoreSource;
 import com.nikitaopara.warehouseoptimizer.demand.forecast.repository.DemandForecastModelRepository;
 import com.nikitaopara.warehouseoptimizer.optimization.config.OptimizationProperties;
 import com.nikitaopara.warehouseoptimizer.optimization.model.ArticleDemandScore;
@@ -106,6 +107,41 @@ class DemandForecastScoringServiceTest {
         assertThat(result.weightedDemand()).isEqualTo(42.0);
         assertThat(result.totalQuantity()).isEqualTo(5);
         assertThat(result.orderCount()).isEqualTo(1);
+    }
+
+    @Test
+    void exposesTribuoAsDetailedScoreSource() {
+        LocalDate analysisDate = LocalDate.of(2026, 6, 10);
+        List<DemandObservation> observations = List.of(observation(1L, analysisDate, 5));
+        DemandForecastModel activeModel = DemandForecastModel.builder()
+                .code("DFM-DETAILED")
+                .status(DemandForecastModelStatus.ACTIVE)
+                .featureSchemaVersion(1)
+                .forecastHorizonDays(14)
+                .modelArtifact(new byte[]{1})
+                .build();
+        DemandForecastRow row = new DemandForecastRow(
+                1L,
+                analysisDate,
+                0.0,
+                0.0,
+                new String[]{"quantity"},
+                new double[]{5.0}
+        );
+
+        when(modelRepository.findFirstByWarehouseIdAndStatusOrderByTrainedAtDesc(
+                9L,
+                DemandForecastModelStatus.ACTIVE
+        )).thenReturn(Optional.of(activeModel));
+        when(trainer.deserialize(activeModel.getModelArtifact())).thenReturn(tribuoModel);
+        when(datasetBuilder.buildPredictionRow(1L, observations, analysisDate)).thenReturn(row);
+        when(trainer.predict(tribuoModel, row)).thenReturn(12.0);
+
+        var result = service.calculateDetailed(9L, observations, analysisDate).get(1L);
+
+        assertThat(result.source()).isEqualTo(DemandScoreSource.TRIBUO);
+        assertThat(result.modelCode()).isEqualTo("DFM-DETAILED");
+        assertThat(result.forecastHorizonDays()).isEqualTo(14);
     }
 
     @Test

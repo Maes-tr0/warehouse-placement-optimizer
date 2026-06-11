@@ -4,6 +4,8 @@ import com.nikitaopara.warehouseoptimizer.demand.forecast.config.DemandForecastP
 import com.nikitaopara.warehouseoptimizer.demand.forecast.model.DemandForecastModel;
 import com.nikitaopara.warehouseoptimizer.demand.forecast.model.DemandForecastModelStatus;
 import com.nikitaopara.warehouseoptimizer.demand.forecast.model.DemandForecastRow;
+import com.nikitaopara.warehouseoptimizer.demand.forecast.model.DemandForecastScore;
+import com.nikitaopara.warehouseoptimizer.demand.forecast.model.DemandScoreSource;
 import com.nikitaopara.warehouseoptimizer.demand.forecast.repository.DemandForecastModelRepository;
 import com.nikitaopara.warehouseoptimizer.optimization.config.OptimizationProperties;
 import com.nikitaopara.warehouseoptimizer.optimization.model.ArticleDemandScore;
@@ -45,6 +47,19 @@ public class DemandForecastScoringService {
             List<DemandObservation> observations,
             LocalDate analysisDate
     ) {
+        return calculateDetailed(warehouseId, observations, analysisDate).entrySet().stream()
+                .collect(Collectors.toUnmodifiableMap(
+                        Map.Entry::getKey,
+                        entry -> entry.getValue().score()
+                ));
+    }
+
+    @Transactional(readOnly = true)
+    public Map<Long, DemandForecastScore> calculateDetailed(
+            Long warehouseId,
+            List<DemandObservation> observations,
+            LocalDate analysisDate
+    ) {
         Map<Long, ArticleDemandScore> fallbackScores = seasonalDemandModel.calculate(
                 observations,
                 analysisDate,
@@ -53,7 +68,7 @@ public class DemandForecastScoringService {
         );
 
         if (!forecastProperties.isEnabled() || fallbackScores.isEmpty()) {
-            return fallbackScores;
+            return toSeasonalScores(fallbackScores);
         }
 
         DemandForecastModel activeModel = modelRepository
@@ -64,7 +79,7 @@ public class DemandForecastScoringService {
                 .orElse(null);
 
         if (!isUsable(activeModel)) {
-            return fallbackScores;
+            return toSeasonalScores(fallbackScores);
         }
 
         try {
@@ -74,7 +89,7 @@ public class DemandForecastScoringService {
             );
             Map<Long, List<DemandObservation>> observationsByArticle = observations.stream()
                     .collect(Collectors.groupingBy(DemandObservation::articleId));
-            Map<Long, ArticleDemandScore> scores = new HashMap<>(fallbackScores);
+            Map<Long, DemandForecastScore> scores = new HashMap<>();
 
             observationsByArticle.forEach((articleId, articleObservations) -> {
                 ArticleDemandScore fallback = fallbackScores.get(articleId);
@@ -90,11 +105,16 @@ public class DemandForecastScoringService {
                             analysisDate
                     );
                     double forecastQuantity = trainer.predict(model, row);
-                    scores.put(articleId, new ArticleDemandScore(
-                            articleId,
-                            forecastQuantity,
-                            fallback.totalQuantity(),
-                            fallback.orderCount()
+                    scores.put(articleId, new DemandForecastScore(
+                            new ArticleDemandScore(
+                                    articleId,
+                                    forecastQuantity,
+                                    fallback.totalQuantity(),
+                                    fallback.orderCount()
+                            ),
+                            DemandScoreSource.TRIBUO,
+                            activeModel.getCode(),
+                            activeModel.getForecastHorizonDays()
                     ));
                 } catch (IllegalArgumentException exception) {
                     double baselineForecast = datasetBuilder.buildBaselineForecast(
@@ -102,11 +122,16 @@ public class DemandForecastScoringService {
                             articleObservations,
                             analysisDate
                     );
-                    scores.put(articleId, new ArticleDemandScore(
-                            articleId,
-                            baselineForecast,
-                            fallback.totalQuantity(),
-                            fallback.orderCount()
+                    scores.put(articleId, new DemandForecastScore(
+                            new ArticleDemandScore(
+                                    articleId,
+                                    baselineForecast,
+                                    fallback.totalQuantity(),
+                                    fallback.orderCount()
+                            ),
+                            DemandScoreSource.BASELINE,
+                            activeModel.getCode(),
+                            activeModel.getForecastHorizonDays()
                     ));
                     log.debug(
                             "Using baseline demand forecast for warehouse {}, article {}: {}",
@@ -125,8 +150,23 @@ public class DemandForecastScoringService {
                     warehouseId,
                     exception
             );
-            return fallbackScores;
+            return toSeasonalScores(fallbackScores);
         }
+    }
+
+    private Map<Long, DemandForecastScore> toSeasonalScores(
+            Map<Long, ArticleDemandScore> fallbackScores
+    ) {
+        return fallbackScores.entrySet().stream()
+                .collect(Collectors.toUnmodifiableMap(
+                        Map.Entry::getKey,
+                        entry -> new DemandForecastScore(
+                                entry.getValue(),
+                                DemandScoreSource.SEASONAL,
+                                null,
+                                null
+                        )
+                ));
     }
 
     private boolean isUsable(DemandForecastModel model) {
