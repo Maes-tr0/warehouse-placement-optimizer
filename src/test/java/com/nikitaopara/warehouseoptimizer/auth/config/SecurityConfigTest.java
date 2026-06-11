@@ -32,6 +32,13 @@ class SecurityConfigTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void permitsUiResourcesWithoutAuthentication() throws Exception {
+        mockMvc.perform(get("/assets/app.css"))
+                .andExpect(result -> assertThat(result.getResponse().getStatus())
+                        .isNotEqualTo(401));
+    }
+
     @RestController
     static class TestController {
 
