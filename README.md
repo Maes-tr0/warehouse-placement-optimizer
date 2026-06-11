@@ -60,13 +60,14 @@ Implemented:
 * optional Redis caching and distributed scheduler locks;
 * Prometheus metrics, structured logs, correlation IDs, and outbox health;
 * optional e-mail notifications for optimization recommendations;
+* responsive browser control center covering admin and operator workflows;
 * Flyway database migrations.
 
 Not implemented yet:
 
 * order picking flow;
 * advanced warehouse layout types;
-* real UI/browser scanner interface.
+* hardware scanner integration beyond keyboard-compatible barcode input.
 
 ---
 
@@ -118,6 +119,20 @@ GET /actuator/prometheus
 GET /admin/audit/events?warehouseCode=WH-1
 GET /admin/warehouses/{warehouseId}/routes/storage-places/{storagePlaceCode}
 ```
+
+---
+
+## Browser Interface
+
+Run the application and open:
+
+```text
+http://localhost:8080/
+```
+
+The interface uses the existing Basic Auth API. Credentials are kept only in the current browser tab. Available workspaces cover warehouse layout and routes, article and container management, receiving and placement, demand history and Tribuo models, optimization assessments and relocation plans, scan-confirmed execution, movements, Elasticsearch audit, accounts, system health, and a complete API console.
+
+Admin sections require `ROOT_ADMIN` or `ADMIN`. Receiving, placement, and relocation execution are also available to `OPERATOR` users according to the backend security rules.
 
 ---
 
