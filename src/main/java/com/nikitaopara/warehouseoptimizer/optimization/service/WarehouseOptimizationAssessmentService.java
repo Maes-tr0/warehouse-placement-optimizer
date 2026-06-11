@@ -1,9 +1,14 @@
 package com.nikitaopara.warehouseoptimizer.optimization.service;
 
 import com.nikitaopara.warehouseoptimizer.common.error.ResourceNotFoundException;
+import com.nikitaopara.warehouseoptimizer.cache.config.CacheNames;
 import com.nikitaopara.warehouseoptimizer.demand.forecast.service.DemandForecastScoringService;
 import com.nikitaopara.warehouseoptimizer.demand.model.OrderDemandItem;
 import com.nikitaopara.warehouseoptimizer.demand.repository.OrderDemandItemRepository;
+import com.nikitaopara.warehouseoptimizer.eventing.model.OptimizationAssessmentEventPayload;
+import com.nikitaopara.warehouseoptimizer.eventing.model.WarehouseEventTopics;
+import com.nikitaopara.warehouseoptimizer.eventing.service.DomainEventPublisher;
+import com.nikitaopara.warehouseoptimizer.observability.WarehouseBusinessMetrics;
 import com.nikitaopara.warehouseoptimizer.optimization.config.OptimizationProperties;
 import com.nikitaopara.warehouseoptimizer.optimization.dto.WarehouseOptimizationAssessmentResponse;
 import com.nikitaopara.warehouseoptimizer.optimization.model.*;
@@ -18,6 +23,8 @@ import com.nikitaopara.warehouseoptimizer.warehouse.repository.WarehouseReposito
 import com.nikitaopara.warehouseoptimizer.warehouse.routing.service.WarehouseRouteCalculator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -37,9 +44,12 @@ public class WarehouseOptimizationAssessmentService {
     private final DemandForecastScoringService demandForecastScoringService;
     private final WarehouseEfficiencyCalculator efficiencyCalculator;
     private final WarehouseRouteCalculator routeCalculator;
+    private final DomainEventPublisher eventPublisher;
+    private final WarehouseBusinessMetrics businessMetrics;
     private final OptimizationProperties properties;
 
     @Transactional
+    @CacheEvict(cacheNames = CacheNames.LATEST_ASSESSMENTS, key = "#warehouseId")
     public WarehouseOptimizationAssessmentResponse analyzeWarehouse(
             Long warehouseId,
             OptimizationAssessmentTrigger trigger
@@ -90,10 +100,22 @@ public class WarehouseOptimizationAssessmentService {
                 routeDistances
         );
 
-        return toResponse(assessmentRepository.save(assessment));
+        WarehouseOptimizationAssessment saved = assessmentRepository.save(assessment);
+        eventPublisher.publish(
+                WarehouseEventTopics.OPTIMIZATION,
+                "warehouse.optimization.assessed",
+                "WarehouseOptimizationAssessment",
+                saved.getId().toString(),
+                saved.getWarehouse().getCode(),
+                OptimizationAssessmentEventPayload.from(saved)
+        );
+        businessMetrics.optimizationAssessed(saved);
+
+        return toResponse(saved);
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheNames.LATEST_ASSESSMENTS, key = "#warehouseId")
     public WarehouseOptimizationAssessmentResponse getLatestAssessment(Long warehouseId) {
         if (!warehouseRepository.existsById(warehouseId)) {
             throw new ResourceNotFoundException("Warehouse not found: " + warehouseId);

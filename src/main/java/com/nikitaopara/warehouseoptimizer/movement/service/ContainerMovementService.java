@@ -1,6 +1,10 @@
 package com.nikitaopara.warehouseoptimizer.movement.service;
 
 import com.nikitaopara.warehouseoptimizer.account.model.User;
+import com.nikitaopara.warehouseoptimizer.eventing.model.ContainerMovementEventPayload;
+import com.nikitaopara.warehouseoptimizer.eventing.model.WarehouseEventTopics;
+import com.nikitaopara.warehouseoptimizer.eventing.service.DomainEventPublisher;
+import com.nikitaopara.warehouseoptimizer.observability.WarehouseBusinessMetrics;
 import com.nikitaopara.warehouseoptimizer.movement.model.ContainerMovement;
 import com.nikitaopara.warehouseoptimizer.movement.model.ContainerMovementType;
 import com.nikitaopara.warehouseoptimizer.movement.repository.ContainerMovementRepository;
@@ -10,6 +14,7 @@ import com.nikitaopara.warehouseoptimizer.putaway.container.model.Container;
 import com.nikitaopara.warehouseoptimizer.warehouse.model.StoragePlace;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -18,7 +23,10 @@ import java.util.List;
 public class ContainerMovementService {
 
     private final ContainerMovementRepository movementRepository;
+    private final DomainEventPublisher eventPublisher;
+    private final WarehouseBusinessMetrics businessMetrics;
 
+    @Transactional
     public ContainerMovement recordOperationalMovement(
             Container source,
             Container target,
@@ -41,6 +49,7 @@ public class ContainerMovementService {
         );
     }
 
+    @Transactional
     public ContainerMovement recordOptimizationMovement(
             WarehouseOptimizationPlan plan,
             WarehouseRelocationStep step,
@@ -65,10 +74,12 @@ public class ContainerMovementService {
         );
     }
 
+    @Transactional(readOnly = true)
     public List<ContainerMovement> getWarehouseHistory(Long warehouseId) {
         return movementRepository.findByWarehouseIdOrderByPerformedAtDesc(warehouseId);
     }
 
+    @Transactional(readOnly = true)
     public List<ContainerMovement> getContainerHistory(String containerNumber) {
         return movementRepository.findByContainerContainerNumberOrderByPerformedAtDesc(
                 containerNumber
@@ -104,6 +115,17 @@ public class ContainerMovementService {
                 .performedBy(actor)
                 .build();
 
-        return movementRepository.save(movement);
+        ContainerMovement saved = movementRepository.save(movement);
+        eventPublisher.publish(
+                WarehouseEventTopics.CONTAINER_MOVEMENTS,
+                "container.movement.recorded",
+                "ContainerMovement",
+                saved.getId().toString(),
+                saved.getWarehouse().getCode(),
+                ContainerMovementEventPayload.from(saved)
+        );
+        businessMetrics.containerMovementRecorded(saved);
+
+        return saved;
     }
 }

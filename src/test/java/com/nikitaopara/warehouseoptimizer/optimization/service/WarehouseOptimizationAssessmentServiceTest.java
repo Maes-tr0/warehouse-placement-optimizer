@@ -4,6 +4,8 @@ import com.nikitaopara.warehouseoptimizer.demand.model.OrderDemand;
 import com.nikitaopara.warehouseoptimizer.demand.model.OrderDemandItem;
 import com.nikitaopara.warehouseoptimizer.demand.repository.OrderDemandItemRepository;
 import com.nikitaopara.warehouseoptimizer.demand.forecast.service.DemandForecastScoringService;
+import com.nikitaopara.warehouseoptimizer.eventing.service.DomainEventPublisher;
+import com.nikitaopara.warehouseoptimizer.observability.WarehouseBusinessMetrics;
 import com.nikitaopara.warehouseoptimizer.optimization.config.OptimizationProperties;
 import com.nikitaopara.warehouseoptimizer.optimization.model.ArticleDemandScore;
 import com.nikitaopara.warehouseoptimizer.optimization.model.OptimizationAssessmentStatus;
@@ -54,6 +56,10 @@ class WarehouseOptimizationAssessmentServiceTest {
 
     @Mock
     private DemandForecastScoringService demandForecastScoringService;
+    @Mock
+    private DomainEventPublisher eventPublisher;
+    @Mock
+    private WarehouseBusinessMetrics businessMetrics;
 
     private WarehouseOptimizationAssessmentService assessmentService;
 
@@ -74,6 +80,8 @@ class WarehouseOptimizationAssessmentServiceTest {
                         new WarehouseGraphBuilder(),
                         new DijkstraWarehouseRouter()
                 ),
+                eventPublisher,
+                businessMetrics,
                 properties
         );
     }
@@ -126,7 +134,14 @@ class WarehouseOptimizationAssessmentServiceTest {
         )).thenReturn(List.of(container));
         when(storagePlaceRepository.findByWarehouseIdOrderByDistanceFromEntryMmAsc(warehouse.getId()))
                 .thenReturn(List.of(nearPlace, farPlace));
-        when(assessmentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(assessmentRepository.save(any())).thenAnswer(invocation -> {
+            var assessment = invocation.getArgument(
+                    0,
+                    com.nikitaopara.warehouseoptimizer.optimization.model.WarehouseOptimizationAssessment.class
+            );
+            assessment.setId(8L);
+            return assessment;
+        });
         when(demandForecastScoringService.calculate(any(), any(), any())).thenReturn(
                 java.util.Map.of(
                         article.getId(),

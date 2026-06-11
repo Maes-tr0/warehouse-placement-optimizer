@@ -4,6 +4,9 @@ import com.nikitaopara.warehouseoptimizer.account.model.Role;
 import com.nikitaopara.warehouseoptimizer.account.model.Status;
 import com.nikitaopara.warehouseoptimizer.account.model.User;
 import com.nikitaopara.warehouseoptimizer.account.repository.UserRepository;
+import com.nikitaopara.warehouseoptimizer.eventing.model.OutboxEventStatus;
+import com.nikitaopara.warehouseoptimizer.eventing.repository.OutboxEventRepository;
+import com.nikitaopara.warehouseoptimizer.eventing.service.OutboxEventDeliveryService;
 import com.nikitaopara.warehouseoptimizer.optimization.dto.CompleteRelocationStepRequest;
 import com.nikitaopara.warehouseoptimizer.optimization.model.*;
 import com.nikitaopara.warehouseoptimizer.optimization.repository.WarehouseOptimizationAssessmentRepository;
@@ -64,6 +67,10 @@ class OptimizationReservationIntegrationTest {
     private WarehouseOptimizationAssessmentRepository assessmentRepository;
     @Autowired
     private WarehouseOptimizationPlanRepository planRepository;
+    @Autowired
+    private OutboxEventRepository outboxEventRepository;
+    @Autowired
+    private OutboxEventDeliveryService outboxEventDeliveryService;
     @Autowired
     private WarehouseService warehouseService;
     @Autowired
@@ -191,6 +198,14 @@ class OptimizationReservationIntegrationTest {
                 warehouseId,
                 targetPlace.getCode()
         ).orElseThrow().getOptimizationReservationCode()).isNull();
+        assertThat(outboxEventRepository.findAll())
+                .hasSize(2)
+                .allSatisfy(event -> assertThat(event.getStatus())
+                        .isEqualTo(OutboxEventStatus.PENDING));
+        assertThat(outboxEventDeliveryService.claimBatch())
+                .hasSize(2)
+                .allSatisfy(event -> assertThat(event.getStatus())
+                        .isEqualTo(OutboxEventStatus.PROCESSING));
     }
 
     private User authenticateRootAdmin() {
