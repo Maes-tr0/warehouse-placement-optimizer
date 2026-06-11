@@ -77,6 +77,9 @@ class WarehouseRelocationExecutionServiceTest {
         assertThat(source.getCurrentStoragePlace()).isSameAs(to);
         assertThat(from.getStatus()).isEqualTo(StoragePlaceStatus.AVAILABLE);
         assertThat(to.getStatus()).isEqualTo(StoragePlaceStatus.OCCUPIED);
+        assertThat(source.getOptimizationReservationCode()).isNull();
+        assertThat(from.getOptimizationReservationCode()).isNull();
+        assertThat(to.getOptimizationReservationCode()).isNull();
         verify(movementService).recordOptimizationMovement(
                 eq(plan),
                 eq(step),
@@ -161,6 +164,10 @@ class WarehouseRelocationExecutionServiceTest {
                 .estimatedTimeSavingSeconds(10L)
                 .reason("Move closer")
                 .build());
+
+        container.reserveForOptimization(plan.getCode());
+        from.reserveForOptimization(plan.getCode());
+        to.reserveForOptimization(plan.getCode());
 
         return plan;
     }

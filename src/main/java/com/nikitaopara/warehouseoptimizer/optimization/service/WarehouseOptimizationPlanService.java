@@ -117,7 +117,7 @@ public class WarehouseOptimizationPlanService {
         User actor = authenticatedUserService.getCurrentUser();
         validateAdmin(actor);
 
-        WarehouseOptimizationPlan plan = getPlanByCodeOrThrow(planCode);
+        WarehouseOptimizationPlan plan = getPlanForUpdateByCodeOrThrow(planCode);
 
         if (plan.getStatus() != OptimizationPlanStatus.DRAFT) {
             throw new IllegalArgumentException("Only a draft optimization plan can be approved");
@@ -127,6 +127,7 @@ public class WarehouseOptimizationPlanService {
             throw new IllegalArgumentException("Optimization plan has no relocation steps");
         }
 
+        reserveResources(plan);
         plan.approve(actor);
 
         return toResponse(planRepository.save(plan));
@@ -137,7 +138,7 @@ public class WarehouseOptimizationPlanService {
         User actor = authenticatedUserService.getCurrentUser();
         validateAdmin(actor);
 
-        WarehouseOptimizationPlan plan = getPlanByCodeOrThrow(planCode);
+        WarehouseOptimizationPlan plan = getPlanForUpdateByCodeOrThrow(planCode);
 
         if (plan.getStatus() != OptimizationPlanStatus.DRAFT
                 && plan.getStatus() != OptimizationPlanStatus.APPROVED
@@ -148,6 +149,7 @@ public class WarehouseOptimizationPlanService {
         }
 
         plan.cancel();
+        releaseResources(plan);
 
         return toResponse(planRepository.save(plan));
     }
@@ -248,6 +250,61 @@ public class WarehouseOptimizationPlanService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Optimization plan not found: " + planCode
                 ));
+    }
+
+    private WarehouseOptimizationPlan getPlanForUpdateByCodeOrThrow(String planCode) {
+        return planRepository.findForUpdateByCode(planCode)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Optimization plan not found: " + planCode
+                ));
+    }
+
+    private void reserveResources(WarehouseOptimizationPlan plan) {
+        Set<Container> containers = collectPlanContainers(plan);
+        Set<StoragePlace> places = collectPlanPlaces(plan);
+
+        containers.forEach(container -> container.reserveForOptimization(plan.getCode()));
+        places.forEach(place -> place.reserveForOptimization(plan.getCode()));
+
+        containerRepository.saveAll(containers);
+        storagePlaceRepository.saveAll(places);
+    }
+
+    private void releaseResources(WarehouseOptimizationPlan plan) {
+        Set<Container> containers = collectPlanContainers(plan);
+        Set<StoragePlace> places = collectPlanPlaces(plan);
+
+        containers.forEach(container -> container.releaseOptimizationReservation(plan.getCode()));
+        places.forEach(place -> place.releaseOptimizationReservation(plan.getCode()));
+
+        containerRepository.saveAll(containers);
+        storagePlaceRepository.saveAll(places);
+    }
+
+    private Set<Container> collectPlanContainers(WarehouseOptimizationPlan plan) {
+        Set<Container> containers = new LinkedHashSet<>();
+        plan.getSteps().forEach(step -> {
+            containers.add(step.getSourceContainer());
+
+            if (step.getTargetContainer() != null) {
+                containers.add(step.getTargetContainer());
+            }
+        });
+        return containers;
+    }
+
+    private Set<StoragePlace> collectPlanPlaces(WarehouseOptimizationPlan plan) {
+        Set<StoragePlace> places = new LinkedHashSet<>();
+        plan.getSteps().forEach(step -> {
+            if (step.getFromStoragePlace() != null) {
+                places.add(step.getFromStoragePlace());
+            }
+
+            if (step.getToStoragePlace() != null) {
+                places.add(step.getToStoragePlace());
+            }
+        });
+        return places;
     }
 
     private DemandObservation toDemandObservation(OrderDemandItem item) {

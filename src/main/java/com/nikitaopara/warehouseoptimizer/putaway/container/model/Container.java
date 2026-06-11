@@ -68,6 +68,9 @@ public class Container {
     @Column(name = "received_at", nullable = false)
     private LocalDateTime receivedAt;
 
+    @Column(name = "optimization_reservation_code", length = 100)
+    private String optimizationReservationCode;
+
     @Version
     @Column(nullable = false)
     private Long version;
@@ -113,6 +116,32 @@ public class Container {
 
     public boolean isRemoved() {
         return this.status == ContainerStatus.REMOVED;
+    }
+
+    public boolean isReservedForOptimization() {
+        return optimizationReservationCode != null;
+    }
+
+    public boolean isReservedForOptimizationPlan(String planCode) {
+        return Objects.equals(optimizationReservationCode, planCode);
+    }
+
+    public void reserveForOptimization(String planCode) {
+        if (planCode == null || planCode.isBlank()) {
+            throw new IllegalArgumentException("Optimization plan code is required for reservation");
+        }
+
+        if (isReservedForOptimization() && !isReservedForOptimizationPlan(planCode)) {
+            throw new IllegalStateException("Container is reserved by another optimization plan");
+        }
+
+        optimizationReservationCode = planCode;
+    }
+
+    public void releaseOptimizationReservation(String planCode) {
+        if (isReservedForOptimizationPlan(planCode)) {
+            optimizationReservationCode = null;
+        }
     }
 
     public boolean isFull() {

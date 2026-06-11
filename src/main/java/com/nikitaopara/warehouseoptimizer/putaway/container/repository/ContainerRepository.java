@@ -12,6 +12,7 @@ import java.util.Set;
 
 public interface ContainerRepository extends JpaRepository<Container, Long> {
 
+    @EntityGraph(attributePaths = {"article", "warehouse", "currentStoragePlace", "mergedIntoContainer"})
     Optional<Container> findByContainerNumber(String containerNumber);
 
     boolean existsByContainerNumber(String containerNumber);

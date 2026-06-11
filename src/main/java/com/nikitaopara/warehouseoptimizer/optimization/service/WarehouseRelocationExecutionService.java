@@ -59,6 +59,7 @@ public class WarehouseRelocationExecutionService {
         validatePlanCanBeExecuted(plan);
 
         WarehouseRelocationStep step = getReadyStep(plan);
+        validateStepReservations(plan, step);
         validateSourceScan(step, request);
 
         if (step.getType() == RelocationStepType.MERGE) {
@@ -80,6 +81,7 @@ public class WarehouseRelocationExecutionService {
 
         if (nextStep == null) {
             plan.markCompleted();
+            releaseResources(plan);
         } else {
             nextStep.markReady();
         }
@@ -261,6 +263,60 @@ public class WarehouseRelocationExecutionService {
                     "Only approved or in-progress optimization plan can be executed"
             );
         }
+    }
+
+    private void validateStepReservations(
+            WarehouseOptimizationPlan plan,
+            WarehouseRelocationStep step
+    ) {
+        String planCode = plan.getCode();
+        validateContainerReservation(step.getSourceContainer(), planCode);
+
+        if (step.getTargetContainer() != null) {
+            validateContainerReservation(step.getTargetContainer(), planCode);
+        }
+
+        if (step.getFromStoragePlace() != null) {
+            validatePlaceReservation(step.getFromStoragePlace(), planCode);
+        }
+
+        if (step.getToStoragePlace() != null) {
+            validatePlaceReservation(step.getToStoragePlace(), planCode);
+        }
+    }
+
+    private void validateContainerReservation(Container container, String planCode) {
+        if (!container.isReservedForOptimizationPlan(planCode)) {
+            throw new IllegalArgumentException(
+                    "Container is not reserved for optimization plan: " + planCode
+            );
+        }
+    }
+
+    private void validatePlaceReservation(StoragePlace place, String planCode) {
+        if (!place.isReservedForOptimizationPlan(planCode)) {
+            throw new IllegalArgumentException(
+                    "Storage place is not reserved for optimization plan: " + planCode
+            );
+        }
+    }
+
+    private void releaseResources(WarehouseOptimizationPlan plan) {
+        plan.getSteps().forEach(step -> {
+            step.getSourceContainer().releaseOptimizationReservation(plan.getCode());
+
+            if (step.getTargetContainer() != null) {
+                step.getTargetContainer().releaseOptimizationReservation(plan.getCode());
+            }
+
+            if (step.getFromStoragePlace() != null) {
+                step.getFromStoragePlace().releaseOptimizationReservation(plan.getCode());
+            }
+
+            if (step.getToStoragePlace() != null) {
+                step.getToStoragePlace().releaseOptimizationReservation(plan.getCode());
+            }
+        });
     }
 
     private void validateOperatorOrAdmin(User actor) {

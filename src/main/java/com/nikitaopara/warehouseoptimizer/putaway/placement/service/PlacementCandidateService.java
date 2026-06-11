@@ -50,6 +50,7 @@ public class PlacementCandidateService {
                 .stream()
                 .filter(targetContainer -> !isSameContainer(sourceContainer, targetContainer))
                 .filter(targetContainer -> !blockedTargetContainerIds.contains(targetContainer.getId()))
+                .filter(targetContainer -> !targetContainer.isReservedForOptimization())
                 .filter(this::hasCurrentStoragePlace)
                 .filter(targetContainer -> targetContainer.canAcceptQuantity(sourceContainer.getQuantity()))
                 .filter(targetContainer -> canTargetContainerFitAfterMerge(sourceContainer, targetContainer))
@@ -86,6 +87,7 @@ public class PlacementCandidateService {
                 )
                 .stream()
                 .filter(storagePlace -> !blockedStoragePlaceIds.contains(storagePlace.getId()))
+                .filter(storagePlace -> !storagePlace.isReservedForOptimization())
                 .filter(storagePlace -> canStoragePlaceFitContainer(storagePlace, sourceContainer))
                 .min(Comparator
                         .comparingInt(this::getStoragePlaceDistanceFromEntry)
