@@ -14,6 +14,10 @@ target/
 .sts4-cache
 .postman
 postman
+!postman/
+postman/*
+!postman/warehouse-optimization-ai-cycle.postman_collection.json
+!postman/warehouse-optimization-ai-local.postman_environment.json
 
 ### IntelliJ IDEA ###
 .idea

@@ -102,6 +102,9 @@ public class ContainerValidationService {
             throw new IllegalArgumentException("Only container waiting for placement can be placed");
         }
 
+        validateContainerNotReserved(container);
+        validateStoragePlaceNotReserved(storagePlace);
+
         if (storagePlace.getStatus() != StoragePlaceStatus.AVAILABLE) {
             throw new IllegalArgumentException("Storage place is not available");
         }
@@ -129,6 +132,10 @@ public class ContainerValidationService {
         if (!target.isStored()) {
             throw new IllegalArgumentException("Target container must be stored");
         }
+
+        validateContainerNotReserved(source);
+        validateContainerNotReserved(target);
+        validateStoragePlaceNotReserved(target.getCurrentStoragePlace());
 
         if (source.getWarehouse() == null || target.getWarehouse() == null) {
             throw new IllegalArgumentException("Both containers must belong to a warehouse");
@@ -166,6 +173,7 @@ public class ContainerValidationService {
         if (container.isRemoved()) {
             throw new IllegalArgumentException("Removed container cannot be updated");
         }
+        validateContainerNotReserved(container);
     }
 
     public void validateContainerQuantityFitsArticle(Article article, Integer quantity) {
@@ -213,6 +221,7 @@ public class ContainerValidationService {
         if (container.isRemoved()) {
             throw new IllegalArgumentException("Container is already removed");
         }
+        validateContainerNotReserved(container);
     }
 
     private void validateReceiveContainerFields(ReceiveContainerRequest request) {
@@ -270,6 +279,24 @@ public class ContainerValidationService {
 
         if (heightMm > storagePlace.getMaxHeightMm()) {
             throw new IllegalArgumentException("Container height exceeds storage place max height");
+        }
+    }
+
+    private void validateContainerNotReserved(Container container) {
+        if (container != null && container.isReservedForOptimization()) {
+            throw new IllegalArgumentException(
+                    "Container is reserved by optimization plan: "
+                            + container.getOptimizationReservationCode()
+            );
+        }
+    }
+
+    private void validateStoragePlaceNotReserved(StoragePlace storagePlace) {
+        if (storagePlace != null && storagePlace.isReservedForOptimization()) {
+            throw new IllegalArgumentException(
+                    "Storage place is reserved by optimization plan: "
+                            + storagePlace.getOptimizationReservationCode()
+            );
         }
     }
 

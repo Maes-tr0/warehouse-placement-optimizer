@@ -1,7 +1,6 @@
 package com.nikitaopara.warehouseoptimizer.putaway.container.service;
 
 import com.nikitaopara.warehouseoptimizer.common.error.ResourceNotFoundException;
-import com.nikitaopara.warehouseoptimizer.putaway.article.model.Article;
 import com.nikitaopara.warehouseoptimizer.putaway.container.model.Container;
 import com.nikitaopara.warehouseoptimizer.putaway.container.model.ContainerStatus;
 import com.nikitaopara.warehouseoptimizer.putaway.container.repository.ContainerRepository;
@@ -13,8 +12,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
-import java.util.function.Function;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service

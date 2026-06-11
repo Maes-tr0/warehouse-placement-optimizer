@@ -1,6 +1,7 @@
 package com.nikitaopara.warehouseoptimizer.demand.repository;
 
 import com.nikitaopara.warehouseoptimizer.demand.model.OrderDemandItem;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
@@ -18,5 +19,17 @@ public interface OrderDemandItemRepository extends JpaRepository<OrderDemandItem
             Long articleId,
             LocalDateTime from,
             LocalDateTime to
+    );
+
+    @EntityGraph(attributePaths = {"article", "orderDemand"})
+    List<OrderDemandItem> findByWarehouseIdAndOrderDemandOrderDateTimeBetween(
+            Long warehouseId,
+            LocalDateTime from,
+            LocalDateTime to
+    );
+
+    long countByWarehouseIdAndCreatedAtAfter(
+            Long warehouseId,
+            LocalDateTime after
     );
 }

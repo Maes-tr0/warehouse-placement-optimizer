@@ -80,6 +80,9 @@ public class StoragePlace {
     @Column(nullable = false, length = 50)
     private StoragePlaceStatus status;
 
+    @Column(name = "optimization_reservation_code", length = 100)
+    private String optimizationReservationCode;
+
     @Version
     @Column(nullable = false)
     private Long version;
@@ -134,6 +137,32 @@ public class StoragePlace {
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
+    }
+
+    public boolean isReservedForOptimization() {
+        return optimizationReservationCode != null;
+    }
+
+    public boolean isReservedForOptimizationPlan(String planCode) {
+        return Objects.equals(optimizationReservationCode, planCode);
+    }
+
+    public void reserveForOptimization(String planCode) {
+        if (planCode == null || planCode.isBlank()) {
+            throw new IllegalArgumentException("Optimization plan code is required for reservation");
+        }
+
+        if (isReservedForOptimization() && !isReservedForOptimizationPlan(planCode)) {
+            throw new IllegalStateException("Storage place is reserved by another optimization plan");
+        }
+
+        optimizationReservationCode = planCode;
+    }
+
+    public void releaseOptimizationReservation(String planCode) {
+        if (isReservedForOptimizationPlan(planCode)) {
+            optimizationReservationCode = null;
+        }
     }
 
     private String getWarehouseCode() {
