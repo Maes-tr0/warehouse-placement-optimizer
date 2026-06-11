@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="uk" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Вхід')}"></head>
+<body class="login-page">
+<main class="login-layout">
+    <section class="login-story">
+        <a class="brand login-brand" href="/login"><span class="brand-mark">WO</span><span><b>Розумний склад</b><small>Warehouse Placement Optimizer</small></span></a>
+        <div><p class="eyebrow">ЄДИНА СИСТЕМА СКЛАДУ</p><h1>Менше зайвих кроків.<br>Швидше зібрані замовлення.</h1><p>Адміністратор контролює структуру, попит та оптимізацію. Оператор отримує чіткі покрокові завдання для кожної палети.</p></div>
+        <div class="login-benefits"><article><b>01</b><span>Приймання та розміщення</span></article><article><b>02</b><span>Прогноз популярності товарів</span></article><article><b>03</b><span>Керовані перестановки палет</span></article></div>
+    </section>
+    <section class="login-panel">
+        <form action="/login" method="post" class="login-card">
+            <div><p class="eyebrow">БЕЗПЕЧНИЙ ВХІД</p><h2>Увійдіть у систему</h2><p>Після входу система автоматично відкриє інтерфейс відповідно до вашої ролі.</p></div>
+            <div class="alert error" th:if="${param.error}"><b>Не вдалося увійти</b><span>Перевірте email, пароль і статус облікового запису.</span></div>
+            <div class="alert success" th:if="${param.logout}"><b>Ви вийшли із системи</b><span>Сесію безпечно завершено.</span></div>
+            <label>Email<input name="email" type="email" autocomplete="username" placeholder="admin@example.com" required autofocus></label>
+            <label>Пароль<input name="password" type="password" autocomplete="current-password" placeholder="Ваш пароль" required></label>
+            <button class="button accent wide login-submit" type="submit">Увійти до робочого кабінету</button>
+            <small class="login-note">Облікові записи створює головний адміністратор.</small>
+        </form>
+    </section>
+</main>
+</body>
+</html>

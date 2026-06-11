@@ -10,6 +10,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = SecurityConfigTest.TestController.class)
@@ -37,6 +38,19 @@ class SecurityConfigTest {
         mockMvc.perform(get("/assets/app.css"))
                 .andExpect(result -> assertThat(result.getResponse().getStatus())
                         .isNotEqualTo(401));
+    }
+
+    @Test
+    void redirectsProtectedUiToLogin() throws Exception {
+        mockMvc.perform(get("/app/operator/dashboard"))
+                .andExpect(status().is3xxRedirection());
+    }
+
+    @Test
+    void preventsOperatorFromOpeningAdminUi() throws Exception {
+        mockMvc.perform(get("/app/admin/dashboard")
+                        .with(user("operator@example.com").roles("OPERATOR")))
+                .andExpect(status().is3xxRedirection());
     }
 
     @RestController
