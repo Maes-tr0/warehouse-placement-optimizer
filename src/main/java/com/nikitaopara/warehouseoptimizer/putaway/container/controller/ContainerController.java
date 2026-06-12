@@ -2,11 +2,13 @@ package com.nikitaopara.warehouseoptimizer.putaway.container.controller;
 
 import com.nikitaopara.warehouseoptimizer.putaway.container.dto.*;
 import com.nikitaopara.warehouseoptimizer.putaway.container.service.ContainerService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@Tag(name = "Containers", description = "Receiving, placing, updating, merging and removing pallets or containers")
 @RestController
 @RequestMapping("/operator/containers")
 @RequiredArgsConstructor

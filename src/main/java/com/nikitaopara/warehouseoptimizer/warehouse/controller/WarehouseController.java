@@ -8,6 +8,7 @@ import com.nikitaopara.warehouseoptimizer.warehouse.model.StoragePlaceStatus;
 import com.nikitaopara.warehouseoptimizer.warehouse.routing.dto.WarehouseRouteResponse;
 import com.nikitaopara.warehouseoptimizer.warehouse.routing.service.WarehouseRoutingService;
 import com.nikitaopara.warehouseoptimizer.warehouse.service.WarehouseService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Tag(name = "Warehouses", description = "Warehouse creation, layout generation, storage places and routing")
 @RestController
 @RequestMapping("/admin/warehouses")
 @RequiredArgsConstructor

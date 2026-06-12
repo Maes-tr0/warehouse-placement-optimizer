@@ -4,10 +4,12 @@ import com.nikitaopara.warehouseoptimizer.putaway.placement.dto.ApprovePlacement
 import com.nikitaopara.warehouseoptimizer.putaway.placement.dto.PlacementRecommendationResponse;
 import com.nikitaopara.warehouseoptimizer.putaway.placement.dto.RecommendPlacementRequest;
 import com.nikitaopara.warehouseoptimizer.putaway.placement.service.PlacementRecommendationService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@Tag(name = "Placement", description = "Placement recommendation workflow for warehouse operators")
 @RestController
 @RequestMapping("/operator/placement")
 @RequiredArgsConstructor

@@ -4,10 +4,12 @@ import com.nikitaopara.warehouseoptimizer.optimization.dto.CompleteRelocationSte
 import com.nikitaopara.warehouseoptimizer.optimization.dto.RelocationExecutionResponse;
 import com.nikitaopara.warehouseoptimizer.optimization.dto.RelocationStepResponse;
 import com.nikitaopara.warehouseoptimizer.optimization.service.WarehouseRelocationExecutionService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@Tag(name = "Relocation Execution", description = "Operator execution flow for approved warehouse relocation plans")
 @RestController
 @RequestMapping("/operator/optimization-plans/{planCode}/steps")
 @RequiredArgsConstructor

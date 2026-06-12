@@ -2,12 +2,14 @@ package com.nikitaopara.warehouseoptimizer.movement.controller;
 
 import com.nikitaopara.warehouseoptimizer.movement.dto.ContainerMovementResponse;
 import com.nikitaopara.warehouseoptimizer.movement.service.ContainerMovementService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Tag(name = "Movement History", description = "Container and pallet movement history")
 @RestController
 @RequestMapping("/admin/container-movements")
 @RequiredArgsConstructor

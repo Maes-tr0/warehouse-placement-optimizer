@@ -3,10 +3,12 @@ package com.nikitaopara.warehouseoptimizer.optimization.controller;
 import com.nikitaopara.warehouseoptimizer.optimization.dto.WarehouseOptimizationAssessmentResponse;
 import com.nikitaopara.warehouseoptimizer.optimization.model.OptimizationAssessmentTrigger;
 import com.nikitaopara.warehouseoptimizer.optimization.service.WarehouseOptimizationAssessmentService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@Tag(name = "Optimization Assessments", description = "Warehouse optimization score calculation and latest assessment lookup")
 @RestController
 @RequestMapping("/admin/warehouses/{warehouseId}/optimization-assessments")
 @RequiredArgsConstructor
