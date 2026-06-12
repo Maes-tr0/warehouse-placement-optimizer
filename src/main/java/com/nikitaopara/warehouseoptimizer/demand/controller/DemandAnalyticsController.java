@@ -2,6 +2,7 @@ package com.nikitaopara.warehouseoptimizer.demand.controller;
 
 import com.nikitaopara.warehouseoptimizer.demand.dto.DemandArticleAnalyticsResponse;
 import com.nikitaopara.warehouseoptimizer.demand.service.DemandAnalyticsService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 
+@Tag(name = "Demand Analytics", description = "Article demand analytics, popularity and demand statistics")
 @RestController
 @RequestMapping("/admin/warehouses/{warehouseId}/demand/articles")
 @RequiredArgsConstructor

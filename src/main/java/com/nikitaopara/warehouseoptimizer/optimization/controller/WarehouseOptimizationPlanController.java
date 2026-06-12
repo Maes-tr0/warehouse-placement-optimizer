@@ -2,11 +2,13 @@ package com.nikitaopara.warehouseoptimizer.optimization.controller;
 
 import com.nikitaopara.warehouseoptimizer.optimization.dto.WarehouseOptimizationPlanResponse;
 import com.nikitaopara.warehouseoptimizer.optimization.service.WarehouseOptimizationPlanService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@Tag(name = "Optimization Plans", description = "Warehouse relocation plan creation, approval and cancellation")
 @RestController
 @RequestMapping("/admin/optimization-plans")
 @RequiredArgsConstructor

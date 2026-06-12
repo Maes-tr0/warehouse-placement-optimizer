@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -63,8 +64,10 @@ public class SecurityConfig {
                     || path.startsWith("/operator/")
                     || path.startsWith("/actuator/");
         };
+
         AuthenticationEntryPoint loginAuthenticationEntryPoint =
                 new LoginUrlAuthenticationEntryPoint("/login");
+
         AuthenticationEntryPoint authenticationEntryPoint = (request, response, exception) -> {
             if (apiRequestMatcher.matches(request)) {
                 apiAuthenticationEntryPoint.commence(request, response, exception);
@@ -88,7 +91,12 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/login",
                                 "/assets/**",
-                                "/favicon.svg"
+                                "/favicon.svg",
+
+                                "/swagger-ui.html",
+                                "/swagger-ui/**",
+                                "/v3/api-docs",
+                                "/v3/api-docs/**"
                         )
                         .permitAll()
 
@@ -123,6 +131,7 @@ public class SecurityConfig {
                             response.sendRedirect("/access-denied");
                         })
                 )
+                .httpBasic(Customizer.withDefaults())
                 .formLogin(form -> form
                         .loginPage("/login")
                         .loginProcessingUrl("/login")

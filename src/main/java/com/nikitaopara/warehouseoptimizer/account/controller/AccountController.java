@@ -4,6 +4,7 @@ import com.nikitaopara.warehouseoptimizer.account.dto.CreateUserRequest;
 import com.nikitaopara.warehouseoptimizer.account.dto.UpdateUserRequest;
 import com.nikitaopara.warehouseoptimizer.account.dto.UserResponse;
 import com.nikitaopara.warehouseoptimizer.account.service.AccountService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Tag(name = "Accounts", description = "Admin and operator account management")
 @RestController
 @RequestMapping("/admin/accounts")
 @RequiredArgsConstructor

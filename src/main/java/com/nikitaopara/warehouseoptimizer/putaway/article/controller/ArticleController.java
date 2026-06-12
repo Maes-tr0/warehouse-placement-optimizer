@@ -2,6 +2,7 @@ package com.nikitaopara.warehouseoptimizer.putaway.article.controller;
 
 import com.nikitaopara.warehouseoptimizer.putaway.article.dto.*;
 import com.nikitaopara.warehouseoptimizer.putaway.article.service.ArticleService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Tag(name = "Articles", description = "Article master data management")
 @RestController
 @RequestMapping("/admin/articles")
 @RequiredArgsConstructor
