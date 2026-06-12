@@ -217,6 +217,11 @@ label small { font-weight: 500; }
 .event-item { padding: 13px; border: 1px solid var(--line); border-radius: 10px; background: #fafbf8; }
 .event-item header { display: flex; justify-content: space-between; gap: 12px; }
 .event-item pre { max-height: 180px; overflow: auto; color: #536057; font-size: 11px; white-space: pre-wrap; }
+.event-item details { margin: 12px 0; }
+.event-item summary { cursor: pointer; color: #526057; font-weight: 750; }
+.event-meta { color: var(--muted); text-align: right; font-size: 11px; }
+.pagination { display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 18px; color: var(--muted); font-size: 12px; }
+.pagination button:disabled { cursor: not-allowed; opacity: .45; transform: none; }
 
 .console-layout { display: grid; grid-template-columns: .8fr 1.2fr; gap: 18px; }
 .method-path { display: grid; grid-template-columns: 110px 1fr; gap: 8px; margin: 14px 0; }
