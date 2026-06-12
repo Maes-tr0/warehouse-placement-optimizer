@@ -10,7 +10,7 @@ import org.springframework.data.elasticsearch.annotations.FieldType;
 import java.time.Instant;
 import java.util.Map;
 
-@Document(indexName = "warehouse-audit-events", createIndex = false)
+@Document(indexName = "warehouse-audit-events", createIndex = true)
 public record WarehouseAuditEventDocument(
         @Id String id,
         @Field(type = FieldType.Keyword) String topic,

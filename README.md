@@ -99,15 +99,20 @@ Start local infrastructure:
 docker compose up -d
 ```
 
-PostgreSQL is always used by the application. The additional integrations are feature-flagged:
+PostgreSQL is always used by the application. Kafka, Redis, Elasticsearch, and local
+Mailpit notifications are enabled by default for the complete local workflow. Start
+the full Compose stack before the application. They can still be disabled explicitly:
 
 ```bash
-KAFKA_EVENTS_ENABLED=true
-REDIS_CACHE_ENABLED=true
-ELASTICSEARCH_AUDIT_ENABLED=true
-EMAIL_NOTIFICATIONS_ENABLED=true
-EMAIL_NOTIFICATION_RECIPIENTS=admin@example.com
+KAFKA_EVENTS_ENABLED=false
+REDIS_CACHE_ENABLED=false
+ELASTICSEARCH_AUDIT_ENABLED=false
+EMAIL_NOTIFICATIONS_ENABLED=false
 ```
+
+The Compose stack uses Elasticsearch 9.2.8 to match the Elasticsearch Java client
+managed by Spring Boot 4. Existing Elasticsearch 8 local data is left in its old
+Docker volume; the 9.x service uses a separate volume.
 
 When all event features are enabled, container movements and optimization assessments are written to the PostgreSQL outbox, delivered to Kafka, indexed in Elasticsearch, and optimization recommendations can produce e-mail notifications. Mailpit receives local SMTP mail on port `1025`; its browser inbox is available at `http://localhost:8025`.
 

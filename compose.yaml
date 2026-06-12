@@ -57,7 +57,7 @@ services:
     restart: unless-stopped
 
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.2.8
     container_name: warehouse-optimizer-elasticsearch
     environment:
       discovery.type: single-node
@@ -67,7 +67,7 @@ services:
       - "9200:9200"
       - "9300:9300"
     volumes:
-      - warehouse_optimizer_elasticsearch_data:/usr/share/elasticsearch/data
+      - warehouse_optimizer_elasticsearch_v9_data:/usr/share/elasticsearch/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health >/dev/null"]
@@ -87,4 +87,4 @@ volumes:
   warehouse_optimizer_postgres_data:
   warehouse_optimizer_redis_data:
   warehouse_optimizer_kafka_data:
-  warehouse_optimizer_elasticsearch_data:
+  warehouse_optimizer_elasticsearch_v9_data:
