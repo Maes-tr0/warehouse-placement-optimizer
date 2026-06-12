@@ -19,6 +19,8 @@
         <p class="nav-label">Analytics</p>
         <a class="nav-item" th:classappend="${active == 'demand'} ? ' active'" href="/app/admin/demand"><span>↗</span>Demand and model</a>
         <a class="nav-item" th:classappend="${active == 'optimization'} ? ' active'" href="/app/admin/optimization"><span>%</span>Optimization</a>
+        <a class="nav-item" th:classappend="${active == 'movements'} ? ' active'" href="/app/admin/movements"><span>↔</span>Movement history</a>
+        <a class="nav-item" th:classappend="${active == 'audit'} ? ' active'" href="/app/admin/audit"><span>◎</span>Audit events</a>
         <p class="nav-label">System</p>
         <a class="nav-item" th:classappend="${active == 'accounts'} ? ' active'" href="/app/admin/accounts"><span>●</span>Users</a>
         <a class="nav-item operator-switch" href="/app/operator/dashboard"><span>→</span>Operator mode</a>

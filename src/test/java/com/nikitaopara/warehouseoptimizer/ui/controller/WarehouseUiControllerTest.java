@@ -51,7 +51,9 @@ class WarehouseUiControllerTest {
             "/app/admin/inventory, admin/inventory",
             "/app/admin/demand, admin/demand",
             "/app/admin/optimization, admin/optimization",
-            "/app/admin/accounts, admin/accounts"
+            "/app/admin/accounts, admin/accounts",
+            "/app/admin/movements, admin/movements",
+            "/app/admin/audit, admin/audit"
     })
     @WithMockUser(roles = "ADMIN")
     void rendersAdminPages(String path, String viewName) throws Exception {
@@ -96,6 +98,26 @@ class WarehouseUiControllerTest {
         mockMvc.perform(get("/app/admin/accounts"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(not(containsString("value=\"ADMIN\""))));
+    }
+
+    @Test
+    @WithMockUser(roles = "OPERATOR")
+    void hidesInventoryManagementControlsFromOperator() throws Exception {
+        mockMvc.perform(get("/app/operator/inventory"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("containerManagementPermission"))))
+                .andExpect(content().string(not(containsString("id=\"containerDialog\""))))
+                .andExpect(content().string(not(containsString(">Actions</th>"))));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void showsInventoryManagementControlsInOperatorModeForAdministrator() throws Exception {
+        mockMvc.perform(get("/app/operator/inventory"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("containerManagementPermission")))
+                .andExpect(content().string(containsString("id=\"containerDialog\"")))
+                .andExpect(content().string(containsString(">Actions</th>")));
     }
 
     private UsernamePasswordAuthenticationToken authentication(String role) {

@@ -383,11 +383,26 @@ async function loadContainers() {
 }
 
 function renderContainers() {
+    const table = $("#containersTable");
+
+    if (!table) {
+        return;
+    }
+
     const query = $("#containerSearch")?.value.trim().toLowerCase() || "";
     const status = $("#containerStatus")?.value || "";
-    const items = state.containers.filter(item => (!state.warehouseId || String(item.warehouseId) === String(state.warehouseId)) && (!status || item.status === status) && (!query || `${item.containerNumber} ${item.articleNumber} ${item.articleName}`.toLowerCase().includes(query)));
-    const actions = page === "operator-inventory";
-    $("#containersTable").innerHTML = items.length ? items.map(item => `<tr><td><b>${escapeHtml(item.containerNumber)}</b></td><td>${escapeHtml(item.articleNumber)}<small class="block">${escapeHtml(item.articleName)}</small></td><td>${item.quantity}</td><td>${item.weightKg} kg · ${item.heightMm} mm</td><td>${escapeHtml(item.currentStoragePlaceCode || "—")}</td><td>${badge(item.status)}</td>${actions ? `<td><div class="row-actions"><button class="mini-button" data-container-edit="${escapeHtml(item.containerNumber)}">Edit</button><button class="mini-button danger" data-container-remove="${escapeHtml(item.containerNumber)}">Remove</button></div></td>` : ""}</tr>`).join("") : `<tr><td colspan="${actions ? 7 : 6}" class="empty-cell">No pallets found</td></tr>`;
+
+    const items = state.containers.filter(item =>
+        (!state.warehouseId || String(item.warehouseId) === String(state.warehouseId))
+        && (!status || item.status === status)
+        && (!query || `${item.containerNumber} ${item.articleNumber} ${item.articleName}`.toLowerCase().includes(query))
+    );
+
+    const actions = page === "operator-inventory" && Boolean($("#containerManagementPermission"));
+
+    table.innerHTML = items.length
+        ? items.map(item => `<tr><td><b>${escapeHtml(item.containerNumber)}</b></td><td>${escapeHtml(item.articleNumber)}<small class="block">${escapeHtml(item.articleName)}</small></td><td>${item.quantity}</td><td>${item.weightKg} kg · ${item.heightMm} mm</td><td>${escapeHtml(item.currentStoragePlaceCode || "—")}</td><td>${badge(item.status)}</td>${actions ? `<td><div class="row-actions"><button class="mini-button" data-container-edit="${escapeHtml(item.containerNumber)}">Edit</button><button class="mini-button danger" data-container-remove="${escapeHtml(item.containerNumber)}">Remove</button></div></td>` : ""}</tr>`).join("")
+        : `<tr><td colspan="${actions ? 7 : 6}" class="empty-cell">No pallets found</td></tr>`;
 }
 
 async function loadAdminInventory() {
@@ -575,7 +590,56 @@ async function loadOperatorRelocation() {
 async function loadOperatorInventory() {
     await loadContainers();
     $("#containerSearch").addEventListener("input", renderContainers); $("#containerStatus").addEventListener("change", renderContainers); $("[data-load-containers]").addEventListener("click", () => loadContainers().catch(report));
-    $("#containerForm").addEventListener("submit", async event => { event.preventDefault(); const data = formData(event.currentTarget); try { await api(`/operator/containers/${encodeURIComponent(data.containerNumber)}`, {method:"PATCH", body:{quantity:num(data.quantity), weightKg:num(data.weightKg), heightMm:num(data.heightMm)}}); $("#containerDialog").close(); await loadContainers(); toast("Pallet data updated"); } catch (error) { report(error); } });
+    $("#containerForm")?.addEventListener("submit", async event => { event.preventDefault(); const data = formData(event.currentTarget); try { await api(`/operator/containers/${encodeURIComponent(data.containerNumber)}`, {method:"PATCH", body:{quantity:num(data.quantity), weightKg:num(data.weightKg), heightMm:num(data.heightMm)}}); $("#containerDialog").close(); await loadContainers(); toast("Pallet data updated"); } catch (error) { report(error); } });
+}
+
+let auditPage = 0;
+
+async function loadMovements() {
+    const warehouseId = requireWarehouse();
+    state.movements = await api(`/admin/container-movements?warehouseId=${warehouseId}`);
+    renderMovements();
+}
+
+function renderMovements() {
+    const query = $("#movementSearch")?.value.trim().toLowerCase() || "";
+    const type = $("#movementType")?.value || "";
+    const items = (state.movements || []).filter(item => {
+        const searchable = `${item.containerNumber} ${item.articleNumber} ${item.targetContainerNumber || ""} ${item.fromStoragePlaceCode || ""} ${item.toStoragePlaceCode || ""} ${item.optimizationPlanCode || ""}`.toLowerCase();
+        return (!type || item.type === type) && (!query || searchable.includes(query));
+    });
+    $("#movementsTable").innerHTML = items.length ? items.map(item => `<tr><td>${formatDate(item.performedAt)}</td><td>${badge(item.type)}</td><td><b>${escapeHtml(item.containerNumber)}</b><small class="block">Article ${escapeHtml(item.articleNumber)}</small>${item.targetContainerNumber ? `<small class="block">Target ${escapeHtml(item.targetContainerNumber)}</small>` : ""}</td><td><b>${escapeHtml(item.fromStoragePlaceCode || "Outside warehouse")} → ${escapeHtml(item.toStoragePlaceCode || "Outside warehouse")}</b></td><td>${item.quantity}</td><td>${item.optimizationPlanCode ? `<b>${escapeHtml(item.optimizationPlanCode)}</b><small class="block">Step ${item.relocationStepNumber ?? "—"}</small>` : "—"}</td><td>${escapeHtml(item.performedBy)}<small class="block">#${item.id}</small></td></tr>`).join("") : '<tr><td colspan="7" class="empty-cell">No movement records match the selected filters.</td></tr>';
+}
+
+async function loadAdminMovements() {
+    await loadMovements();
+    $("#movementSearch").addEventListener("input", renderMovements);
+    $("#movementType").addEventListener("change", renderMovements);
+    $("[data-load-movements]").addEventListener("click", () => loadMovements().catch(report));
+}
+
+async function loadAuditEvents(pageNumber = auditPage) {
+    requireWarehouse();
+    const warehouse = state.warehouses.find(item => String(item.id) === String(state.warehouseId));
+    if (!warehouse) throw new Error("Select an active warehouse first");
+    const form = $("#auditFilterForm");
+    const filters = formData(form);
+    const params = new URLSearchParams({warehouseCode: warehouse.warehouseCode, page: String(pageNumber), size: filters.size || "50"});
+    if (filters.eventType) params.set("eventType", filters.eventType);
+    const result = await api(`/admin/audit/events?${params}`);
+    auditPage = result.page;
+    $("#auditEvents").innerHTML = result.items.length ? result.items.map(item => `<article class="event-item"><header><div><b>${escapeHtml(label(item.eventType))}</b><small class="block">${escapeHtml(item.aggregateType)} · ${escapeHtml(item.aggregateId)}</small></div><div class="event-meta">${formatDate(item.occurredAt)}<small class="block">${escapeHtml(item.topic)}</small></div></header><details><summary>Event payload</summary><pre>${escapeHtml(JSON.stringify(item.payload, null, 2))}</pre></details><small class="block">Event ID: ${escapeHtml(item.eventId)}</small></article>`).join("") : '<div class="empty-state">No Elasticsearch audit events match these filters.</div>';
+    $("#auditPageState").textContent = `Page ${result.page + 1} of ${Math.max(result.totalPages, 1)} · ${result.totalElements} events`;
+    $("#auditPrevious").disabled = result.page <= 0;
+    $("#auditNext").disabled = result.page + 1 >= result.totalPages;
+}
+
+async function loadAdminAudit() {
+    auditPage = 0;
+    await loadAuditEvents();
+    $("#auditFilterForm").addEventListener("submit", event => { event.preventDefault(); loadAuditEvents(0).catch(report); });
+    $("#auditPrevious").addEventListener("click", () => loadAuditEvents(Math.max(0, auditPage - 1)).catch(report));
+    $("#auditNext").addEventListener("click", () => loadAuditEvents(auditPage + 1).catch(report));
 }
 
 function bindDelegatedActions() {
@@ -604,6 +668,8 @@ const pageInitializers = {
     "admin-demand": loadAdminDemand,
     "admin-optimization": loadAdminOptimization,
     "admin-accounts": loadAdminAccounts,
+    "admin-movements": loadAdminMovements,
+    "admin-audit": loadAdminAudit,
     "operator-dashboard": loadOperatorDashboard,
     "operator-receiving": loadOperatorReceiving,
     "operator-placement": loadOperatorPlacement,
@@ -618,6 +684,8 @@ const pageRefreshers = {
     "admin-demand": refreshAdminDemandData,
     "admin-optimization": refreshAdminOptimizationData,
     "admin-accounts": loadAccounts,
+    "admin-movements": loadMovements,
+    "admin-audit": () => loadAuditEvents(auditPage),
     "operator-dashboard": loadOperatorDashboard,
     "operator-inventory": loadContainers
 };

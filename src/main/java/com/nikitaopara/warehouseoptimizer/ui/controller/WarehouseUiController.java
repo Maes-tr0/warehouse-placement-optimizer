@@ -64,6 +64,16 @@ public class WarehouseUiController {
         return "admin/accounts";
     }
 
+    @GetMapping("/app/admin/movements")
+    public String adminMovements() {
+        return "admin/movements";
+    }
+
+    @GetMapping("/app/admin/audit")
+    public String adminAudit() {
+        return "admin/audit";
+    }
+
     @GetMapping("/app/operator/dashboard")
     public String operatorDashboard() {
         return "operator/dashboard";

@@ -12,7 +12,8 @@ import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.serializer.GenericJacksonJsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
-import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
+import tools.jackson.databind.jsontype.PolymorphicTypeValidator;
 
 @Configuration
 @EnableCaching
@@ -22,14 +23,26 @@ public class CacheConfiguration {
     @ConditionalOnProperty(prefix = "app.cache", name = "redis-enabled", havingValue = "true")
     CacheManager redisCacheManager(
             RedisConnectionFactory connectionFactory,
-            CacheProperties properties,
-            ObjectMapper objectMapper
+            CacheProperties properties
     ) {
+        PolymorphicTypeValidator typeValidator = BasicPolymorphicTypeValidator.builder()
+                .allowIfSubType("com.nikitaopara.warehouseoptimizer.")
+                .allowIfSubType("java.util.")
+                .allowIfSubType("java.time.")
+                .allowIfSubType("java.math.")
+                .build();
+
+        GenericJacksonJsonRedisSerializer serializer = GenericJacksonJsonRedisSerializer.builder()
+                .typePropertyName("@class")
+                .enableDefaultTyping(typeValidator)
+                .enableSpringCacheNullValueSupport("@class")
+                .build();
+
         RedisCacheConfiguration configuration = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(properties.getTimeToLive())
                 .disableCachingNullValues()
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(
-                        new GenericJacksonJsonRedisSerializer(objectMapper)
+                        serializer
                 ));
 
         return RedisCacheManager.builder(connectionFactory)
