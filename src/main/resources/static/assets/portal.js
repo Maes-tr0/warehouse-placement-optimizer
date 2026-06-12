@@ -383,11 +383,26 @@ async function loadContainers() {
 }
 
 function renderContainers() {
+    const table = $("#containersTable");
+
+    if (!table) {
+        return;
+    }
+
     const query = $("#containerSearch")?.value.trim().toLowerCase() || "";
     const status = $("#containerStatus")?.value || "";
-    const items = state.containers.filter(item => (!state.warehouseId || String(item.warehouseId) === String(state.warehouseId)) && (!status || item.status === status) && (!query || `${item.containerNumber} ${item.articleNumber} ${item.articleName}`.toLowerCase().includes(query)));
+
+    const items = state.containers.filter(item =>
+        (!state.warehouseId || String(item.warehouseId) === String(state.warehouseId))
+        && (!status || item.status === status)
+        && (!query || `${item.containerNumber} ${item.articleNumber} ${item.articleName}`.toLowerCase().includes(query))
+    );
+
     const actions = page === "operator-inventory" && Boolean($("#containerManagementPermission"));
-    $("#containersTable").innerHTML = items.length ? items.map(item => `<tr><td><b>${escapeHtml(item.containerNumber)}</b></td><td>${escapeHtml(item.articleNumber)}<small class="block">${escapeHtml(item.articleName)}</small></td><td>${item.quantity}</td><td>${item.weightKg} kg · ${item.heightMm} mm</td><td>${escapeHtml(item.currentStoragePlaceCode || "—")}</td><td>${badge(item.status)}</td>${actions ? `<td><div class="row-actions"><button class="mini-button" data-container-edit="${escapeHtml(item.containerNumber)}">Edit</button><button class="mini-button danger" data-container-remove="${escapeHtml(item.containerNumber)}">Remove</button></div></td>` : ""}</tr>`).join("") : `<tr><td colspan="${actions ? 7 : 6}" class="empty-cell">No pallets found</td></tr>`;
+
+    table.innerHTML = items.length
+        ? items.map(item => `<tr><td><b>${escapeHtml(item.containerNumber)}</b></td><td>${escapeHtml(item.articleNumber)}<small class="block">${escapeHtml(item.articleName)}</small></td><td>${item.quantity}</td><td>${item.weightKg} kg · ${item.heightMm} mm</td><td>${escapeHtml(item.currentStoragePlaceCode || "—")}</td><td>${badge(item.status)}</td>${actions ? `<td><div class="row-actions"><button class="mini-button" data-container-edit="${escapeHtml(item.containerNumber)}">Edit</button><button class="mini-button danger" data-container-remove="${escapeHtml(item.containerNumber)}">Remove</button></div></td>` : ""}</tr>`).join("")
+        : `<tr><td colspan="${actions ? 7 : 6}" class="empty-cell">No pallets found</td></tr>`;
 }
 
 async function loadAdminInventory() {
