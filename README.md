@@ -1,6 +1,6 @@
 # Warehouse Placement Optimizer
 
-Warehouse Placement Optimizer is a Java/Spring Boot web application for warehouse layout generation, container receiving, putaway operations, and learned demand forecasting.
+Warehouse Placement Optimizer is a Java/Spring Boot web application for warehouse layout generation, container receiving, putaway operations, relocation optimization, learned demand forecasting, and documented REST API access through Swagger/OpenAPI.
 
 The main goal of the project is to reduce warehouse picking and placement time by organizing pallet storage more intelligently. The current version implements warehouse setup, operator putaway, relocation recommendations, and Java-based ML demand prediction.
 
@@ -61,6 +61,7 @@ Implemented:
 * Prometheus metrics, structured logs, correlation IDs, and outbox health;
 * optional e-mail notifications for optimization recommendations;
 * responsive browser control center covering admin and operator workflows;
+* Swagger/OpenAPI documentation for admin and operator REST endpoints;
 * Flyway database migrations.
 
 Not implemented yet:
@@ -78,6 +79,7 @@ Not implemented yet:
 * Spring Web
 * Spring Security
 * Spring Data JPA
+* Springdoc OpenAPI / Swagger UI
 * Hibernate
 * PostgreSQL
 * Flyway
@@ -121,6 +123,8 @@ Operational endpoints:
 ```text
 GET /actuator/health
 GET /actuator/prometheus
+GET /swagger-ui.html
+GET /v3/api-docs
 GET /admin/audit/events?warehouseCode=WH-1
 GET /admin/warehouses/{warehouseId}/routes/storage-places/{storagePlaceCode}
 ```
@@ -163,6 +167,58 @@ and account administration. The operator portal covers receiving, placement,
 scan-confirmed relocation execution, and pallet inventory.
 
 Admin sections require `ROOT_ADMIN` or `ADMIN`. Receiving, placement, and relocation execution are also available to `OPERATOR` users according to the backend security rules.
+
+---
+
+## API Documentation / Swagger UI
+
+The application exposes interactive REST API documentation through Springdoc OpenAPI.
+
+Swagger UI:
+
+```text
+http://localhost:8080/swagger-ui.html
+```
+
+OpenAPI JSON:
+
+```text
+http://localhost:8080/v3/api-docs
+```
+
+The documentation is focused on backend REST endpoints only:
+
+```text
+/admin/**
+/operator/**
+```
+
+UI pages, login pages, actuator endpoints, and error pages are excluded from the generated OpenAPI documentation.
+
+Swagger uses HTTP Basic authentication for testing secured endpoints directly from the browser. Click `Authorize` in Swagger UI and enter an existing application account e-mail and password.
+
+Role access rules:
+
+* `ROOT_ADMIN` and `ADMIN` can call `/admin/**` endpoints;
+* `ROOT_ADMIN`, `ADMIN`, and `OPERATOR` can call `/operator/**` endpoints;
+* Swagger resources `/swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs`, and `/v3/api-docs/**` are publicly readable so the documentation page can load.
+
+The OpenAPI configuration defines grouped tags for the main modules:
+
+* Accounts
+* Warehouses
+* Articles
+* Containers
+* Placement
+* Demand History
+* Demand Analytics
+* Demand Forecast Models
+* Optimization Assessments
+* Optimization Plans
+* Relocation Execution
+* Movement History
+* Audit Events
+
 
 ---
 
@@ -229,7 +285,7 @@ Contains:
 * `AuthenticatedUserService`
 * password configuration
 
-The application currently uses HTTP Basic authentication.
+The application uses Spring Security form login for the browser interface and HTTP Basic authentication for REST/API testing through tools such as Swagger UI and Postman.
 
 ---
 
@@ -646,6 +702,9 @@ The source container is not physically deleted.
 
 ## Current API Overview
 
+Interactive API documentation is available in Swagger UI at `http://localhost:8080/swagger-ui.html`. The raw OpenAPI specification is available at `http://localhost:8080/v3/api-docs`.
+
+
 ### Warehouse
 
 Create warehouse:
@@ -759,6 +818,9 @@ V7__create_warehouse_optimization_assessments.sql
 V8__create_warehouse_optimization_plans.sql
 V9__create_container_movements.sql
 V10__create_demand_forecast_models.sql
+V11__enforce_single_active_optimization_plan.sql
+V12__add_optimization_resource_reservations.sql
+V13__create_outbox_events.sql
 ```
 
 ### V1
@@ -806,11 +868,34 @@ Create optimization assessments, relocation plans, scan-validated steps, and imm
 
 Creates versioned demand forecast model storage, validation metrics, and the serialized Tribuo model artifact.
 
+### V11
+
+Enforces the rule that only one active optimization plan can exist for a warehouse at the same time.
+
+### V12
+
+Adds resource reservations for approved optimization and relocation plans, preventing conflicting moves from using the same containers or storage places.
+
+### V13
+
+Creates the transactional outbox table used for reliable event publishing to Kafka and other asynchronous integrations.
+
 ---
 
 ## Local Development Notes
 
 The project uses Flyway for database schema management.
+
+After adding or changing Swagger/OpenAPI annotations, restart the application and verify that the documentation is generated correctly:
+
+```bash
+./mvnw clean spring-boot:run
+```
+
+```text
+http://localhost:8080/swagger-ui.html
+http://localhost:8080/v3/api-docs
+```
 
 Before starting with a new database, configure the initial root administrator:
 
